@@ -11,6 +11,7 @@ export const ABOUT = String.raw`
 - **How we work (the Hub):** a weekly cycle: **Discover → Assign → Experiment → Synthesize → Share → Apply**. Kickoff, independent exploration, a midweek check-in, then a review where you demo what you learned. Mastery levels: **Familiar → Operator → Practitioner → Able to teach**; the weekly target is Practitioner.
 - **Standards:** more than one prompt and one pretty output: test the core workflow and one advanced feature, revise a bad result, record settings, cost and limits, and make one workflow someone else can repeat. Failed experiments count as evidence.
 - **Current focus:** **Project 001 — AI Poster Generation**: from a simple brief to a professionally art-directed poster (concept, typography, imagery, composition, colour, readability). Next areas: video, AI agents, automation, AI engineering.
+- **Where we're heading (AI Optimisation: Where We're Heading):** beyond intro talks, toward AI that changes how organisations work. Companies want AI optimisation but rarely have a team that finds what to automate and implements it; training alone doesn't fix that. So: deeper, advanced events with real practitioners (e.g. robotics), for management and employees as well as students, framed around time, effort and money saved; mapping departments' workflows to find the waste; and, long-term, an **AI Optimisation Team** that audits an organisation, implements the solutions and hands over new workflows. First steps: one in-depth event, one department pilot, an audit template.
 - **The big dream (The Idiot's Vision):** an AI-powered organisation where one person works with dozens of agents and can build almost anything; reusable agents, tools and shared knowledge; RM100,000 in funding and company partnerships for credits, tools and events. Eleyna herself is a small first piece of that.
 `;
 
@@ -26,6 +27,7 @@ Goal: make them **feel the AI**. They should finish the message excited, knowing
    - *Core Philosophy* (5 min): how we think
    - *AI Exploration Hub*: how the weekly cycle works
    - *Project 001*: what we're building now
+   - *AI Optimisation: Where We're Heading*: our next direction
    - *THE IDIOT'S VISION* (optional): the big dream
    All are in Lark → Wiki → **AI Exploration**.
 4. **Lark basics:** @mention Eleyna by picking her from the @ list; accept calendar invites so they stay on your calendar and you're added to the event's group; the Wiki is in the left sidebar.
