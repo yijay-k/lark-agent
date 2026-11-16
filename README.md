@@ -14,6 +14,8 @@ An always-on helper inside each Lark event group. It runs on Cloudflare's free p
 
 **Brain:** `GEMINI_MODELS` in order (Gemini 3.5 Flash-Lite with thinking off, then 3.8 Flash), then Cloudflare Workers AI (`BACKUP_MODEL`, Llama 3.3 70B fast), all inside one 25 s budget, because Cloudflare's free plan gives a Lark message 30 s of background time. Typical answer: 4–10 s. Google Search is tried only for research questions; the free tier currently refuses it (429), which costs ~0.3 s. Providers retire models often: if answers stop, check `npx wrangler tail` and change the model names in `wrangler.toml`. Nothing is billed: neither service has a card on file, and free plans stop rather than charge.
 
+**Role, roadmap and the Lark settings she depends on:** [`docs/ROADMAP.md`](docs/ROADMAP.md). **What she says about the club and to new members:** [`src/handbook.js`](src/handbook.js) (owner-only).
+
 ## Files
 | File | What it does |
 |---|---|
