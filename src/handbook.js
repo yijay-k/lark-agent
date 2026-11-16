@@ -55,6 +55,6 @@ Not in the mood to read? Just chat with me instead. Try:
 2. "How does the weekly cycle work?"
 3. "What should I do in my first week?"
 
-(If I ever glitch out or you need the big idiot himself (yes, the one behind THE IDIOT'S VISION), ping EJ. He built me, so he can probably answer whatever you've got. Probably.)
+(If I ever glitch out or you need the big idiot himself (yes, the one behind THE IDIOT'S VISION), ping EJ. He built me, so he can probably answer whatever you've got. Probably...)
 
 What do you want to dive into first?`;
