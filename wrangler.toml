@@ -1,0 +1,31 @@
+name = "lark-event-bot"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# Every 10 minutes: add people who accepted, post "Good to know" notes.
+[triggers]
+crons = ["*/10 * * * *"]
+
+# Cloudflare's own free AI, used only when Gemini fails or runs out of free quota.
+[ai]
+binding = "AI"
+
+# The bot's memory. database_id is filled in by `npx wrangler d1 create lark-event-bot`.
+[[d1_databases]]
+binding = "DB"
+database_name = "lark-event-bot"
+database_id = "a11aaad7-a5f1-4b6b-8aec-a46de0de764c"
+
+[vars]
+LARK_DOMAIN = "https://open.larksuite.com"
+LARK_APP_ID = "cli_aa736a5711381e27"
+# Tried in order; Lite first because it is fast and has the most free quota.
+GEMINI_MODELS = "gemini-3.5-flash-lite,gemini-3.8-flash"
+BACKUP_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+TIMEZONE = "Asia/Kuala_Lumpur"
+
+# Secrets (never in this file): LARK_APP_SECRET, LARK_ENCRYPT_KEY, LARK_VERIFICATION_TOKEN, GEMINI_API_KEY
+# Set each with: npx wrangler secret put <NAME>
+
+[observability]
+enabled = true

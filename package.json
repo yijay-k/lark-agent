@@ -1,0 +1,15 @@
+{
+  "name": "lark-event-bot",
+  "version": "1.0.0",
+  "description": "Always-on Lark event-group bot on Cloudflare Workers: remembers the chat, answers @mentions, briefs the group, adds people who accept.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "deploy": "wrangler deploy",
+    "logs": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.162.0"
+  }
+}
