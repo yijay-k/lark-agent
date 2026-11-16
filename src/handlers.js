@@ -88,7 +88,7 @@ async function onDirectMessage({ env, lark, store, msg, sender, text, log, fetch
   const answer = await think(env, dmSystem(today(tz)) + endingRule(await nextEnding(store, msg.chat_id)), answerPrompt(contextText(ctx), text, 'them'), log, fetchImpl);
   await lark.replyPost(msg.message_id, '', answer.text);
   await recordAnswer(store, answer);
-  log(`answered DM via ${answer.via}, ${answer.tokens} tokens`);
+  log(`answered DM ${msg.chat_id} via ${answer.via}, ${answer.tokens} tokens`);
   return 'answered';
 }
 

@@ -79,7 +79,14 @@ Nothing can be billed: neither Cloudflare nor Google has a card on file, and fre
 
 ## Run your own
 
-You need a Lark custom app with a bot, a Cloudflare account and a Gemini API key (from aistudio.google.com).
+**The easy way: let an AI set it up.** Clone the repo, open it in an AI coding agent (Claude Code, Codex, Cursor…) and say *"set this bot up for my Lark"*. The agent follows [`AGENTS.md`](AGENTS.md):
+- it asks for your bot's name, organisation and welcome message, and rewrites the handbook;
+- it runs every command and tells you exactly where to click in Lark;
+- it checks each step before moving on.
+
+You never paste a secret into the chat: the agent gives you `npx wrangler secret put` commands to run in your own terminal.
+
+**By hand:** you need a Lark custom app with a bot, a Cloudflare account and a Gemini API key (from aistudio.google.com).
 
 1. Run `npm install`, then `npx wrangler login`.
 2. Run `npx wrangler d1 create lark-event-bot`, put the `database_id` in `wrangler.toml`, then run `npx wrangler d1 execute lark-event-bot --remote --file schema.sql`.
