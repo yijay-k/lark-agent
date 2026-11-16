@@ -32,6 +32,6 @@ Eleyna is AI Exploration's **secretary, HR and onboarding guide**: she knows the
 > **Side note (later):** when the club has more members, move the Handbook into a locked Lark doc and assign one trusted "Eleyna manager" who knows how to prompt. Until then, Yi Jay controls all access; no knowledge-base editors yet.
 
 ## Lark settings Eleyna depends on
-- **Events & Callbacks** → request URL `https://lark-event-bot.kohyijay6.workers.dev/lark/events`; events: Message received, User added to group, User enters chat with bot.
+- **Events & Callbacks** → request URL the Worker URL + `/lark/events` (`https://lark-event-bot.<subdomain>.workers.dev/lark/events`); events: Message received, User added to group, User enters chat with bot.
 - **Availability**: must include everyone she should talk to. Otherwise Lark refuses with `230013 Bot has NO availability to this user` (a failed welcome is retried later).
 - The Encrypt Key and Verification Token are Cloudflare secrets (`LARK_ENCRYPT_KEY`, `LARK_VERIFICATION_TOKEN`).
