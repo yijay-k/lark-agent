@@ -5,7 +5,7 @@ import { createLark, usageKey } from './lark.js';
 import { createStore } from './store.js';
 import { onMessage, answerQuestion, answerDirect } from './handlers.js';
 import { runCron } from './cron.js';
-import { onMembersAdded, welcomeText } from './onboard.js';
+import { onMembersAdded, onChatEntered, welcomeText } from './onboard.js';
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -81,6 +81,16 @@ export default {
 
     const eventType = body.header?.event_type;
     const eventId = body.header?.event_id;
+    if (eventType === 'im.chat.access_event.bot_p2p_chat_entered_v1' && eventId) {
+      const store = createStore(env.DB);
+      const lark = createLark(env, fetch, store);
+      ctx.waitUntil(
+        (async () => {
+          if (!(await store.firstTime(eventId))) return;
+          await onChatEntered({ lark, store, event: body.event });
+        })().catch((err) => console.log(`welcome on chat open failed: ${err.message}`))
+      );
+    }
     if (eventType === 'im.chat.member.user.added_v1' && eventId) {
       const store = createStore(env.DB);
       const lark = createLark(env, fetch, store);

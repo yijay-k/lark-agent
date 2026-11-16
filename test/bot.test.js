@@ -121,6 +121,7 @@ test('bot messages are ignored; private messages get an answer without an @menti
   const store = fakeStore();
   const fromBot = { ...groupMessage('hi'), sender: { sender_type: 'app' } };
   assert.equal(await onMessage({ env, lark: fakeLark(), store, event: fromBot, log: () => {} }), 'ignored');
+  await store.markBriefed('onboard', ME);
   const lark = { ...fakeLark(), listChats: async () => [{ chat_id: 'oc_1', name: 'AiSED', description: 'event:EV1' }],
     wikiSpaces: async () => [{ space_id: 'sp', name: 'AI Exploration', description: 'club wiki' }],
     wikiNodes: async () => [{ obj_type: 'docx', title: 'Core Philosophy', obj_token: 'doc1', has_child: false }],
@@ -272,4 +273,29 @@ test('posts keep paragraph spacing: one block per paragraph, an empty line betwe
   const rows = JSON.parse(postContent('T', 'Para one\n\n**Heading**\n• a\n• b\n\nLast')).en_us.content;
   assert.deepEqual(rows.map((r) => r[0].tag), ['md', 'text', 'md', 'text', 'md']);
   assert.equal(rows[2][0].text, '**Heading**\n• a\n• b');
+});
+
+test('Eleyna speaks first: a new person gets the welcome before anything else, once', async () => {
+  const { onChatEntered } = await import('../src/onboard.js');
+  const sent = [];
+  const larkFor = () => ({ ...fakeLark(), sendPostToUser: async (id, title) => sent.push([id, title]),
+    listChats: async () => [], wikiSpaces: async () => [], wikiNodes: async () => [], docText: async () => '' });
+  // opening the chat
+  const store = fakeStore();
+  assert.equal(await onChatEntered({ lark: larkFor(), store, event: { chat_id: 'oc_dm', operator_id: { open_id: 'ou_new' } }, log: () => {} }), true);
+  assert.equal(await onChatEntered({ lark: larkFor(), store, event: { chat_id: 'oc_dm', operator_id: { open_id: 'ou_new' } }, log: () => {} }), false);
+  // first DM "hi": welcome only, no extra answer
+  const store2 = fakeStore();
+  const lark2 = larkFor();
+  const hi = groupMessage('hi');
+  hi.message.chat_type = 'p2p';
+  hi.sender.sender_id.open_id = 'ou_other';
+  assert.equal(await onMessage({ env, lark: lark2, store: store2, event: hi, log: () => {}, fetchImpl: fakeFetch }), 'welcomed');
+  assert.equal(lark2.calls.filter((c) => c[0] === 'reply').length, 0);
+  // a later DM is answered normally, without a second welcome
+  const q = groupMessage('what is project 001?');
+  q.message.chat_type = 'p2p';
+  q.sender.sender_id.open_id = 'ou_other';
+  assert.equal(await onMessage({ env, lark: lark2, store: store2, event: q, log: () => {}, fetchImpl: fakeFetch }), 'answered');
+  assert.deepEqual(sent.map((x) => x[0]), ['ou_new', 'ou_other']);
 });

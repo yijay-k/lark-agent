@@ -3,6 +3,9 @@
 import { messageText, findLinks, isBotMentioned, isResearch, isUsageQuestion } from './text.js';
 import { recordAnswer, usageNumbers, usageReport } from './usage.js';
 import { nextEnding, endingRule } from './roast.js';
+import { welcomeOnce } from './onboard.js';
+
+const JUST_A_GREETING = /^(hi+|hey+|hello+|yo+|sup|hai|hallo|good (morning|afternoon|evening)|hiya|howdy)[!. ]*$/i;
 import { groupContext, personContext, contextText } from './context.js';
 import { answerSystem, answerPrompt, researchAddon, dmSystem } from './prompts.js';
 import { think } from './brain.js';
@@ -71,6 +74,10 @@ export async function answerQuestion({ env, lark, store, chatId, question, asker
 async function onDirectMessage({ env, lark, store, msg, sender, text, log, fetchImpl }) {
   const userId = sender.sender_id?.open_id;
   await store.saveMessage({ messageId: msg.message_id, chatId: msg.chat_id, senderId: userId, senderName: 'you', text, links: findLinks(text), createdAt: Number(msg.create_time || Date.now()) });
+  // Eleyna speaks first: someone she hasn't welcomed yet gets the welcome before anything else.
+  // A plain "hi" needs nothing more; a real question still gets its answer after the welcome.
+  const welcomedNow = await welcomeOnce({ lark, store, openId: userId, log }).catch((err) => (log(`welcome failed: ${err.message}`), false));
+  if (welcomedNow && JUST_A_GREETING.test(text.trim())) return 'welcomed';
   if (isUsageQuestion(text)) {
     await lark.replyPost(msg.message_id, '', usageReport(await usageNumbers(store)));
     return 'usage';
