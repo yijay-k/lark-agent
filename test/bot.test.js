@@ -232,5 +232,5 @@ test('roast endings rotate: never the same as the last two, knife-twist is rare'
     recent = [...recent, e].slice(-6);
   }
   assert.ok(counts.knife < counts.chatgpt && counts.knife < counts.diy, JSON.stringify(counts));
-  assert.ok(Object.keys(counts).length === 4);
+  assert.ok(Object.keys(counts).length === 5);
 });
