@@ -104,6 +104,10 @@ export function createLark(env, fetchImpl = fetch, store = null) {
 }
 
 // A Lark rich-text post rendered from markdown (the "md" element renders bold, lists and links).
+// Lark drops blank lines inside one md element, so each paragraph becomes its own element with
+// an empty line between them; otherwise sections run together.
 export function postContent(title, markdown) {
-  return JSON.stringify({ en_us: { title: title || '', content: [[{ tag: 'md', text: markdown }]] } });
+  const paragraphs = String(markdown || '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const content = paragraphs.flatMap((p, i) => (i === 0 ? [] : [[{ tag: 'text', text: '' }]]).concat([[{ tag: 'md', text: p }]]));
+  return JSON.stringify({ en_us: { title: title || '', content: content.length ? content : [[{ tag: 'md', text: '' }]] } });
 }

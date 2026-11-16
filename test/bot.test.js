@@ -262,7 +262,14 @@ test('the welcome is the approved text with only the name filled in', async () =
   const text = welcomeText({ name: 'Sarah' });
   assert.match(text, /^Hi Sarah! I'm Eleyna/);
   assert.match(text, /slide into these DMs 😉/);
-  assert.match(text, /big boss man, ping EJ/);
+  assert.match(text, /big idiot himself/);
   assert.doesNotMatch(text, /\{name\}/);
   assert.match(welcomeText({ name: '' }), /^Hi there!/);
+});
+
+test('posts keep paragraph spacing: one block per paragraph, an empty line between', async () => {
+  const { postContent } = await import('../src/lark.js');
+  const rows = JSON.parse(postContent('T', 'Para one\n\n**Heading**\n• a\n• b\n\nLast')).en_us.content;
+  assert.deepEqual(rows.map((r) => r[0].tag), ['md', 'text', 'md', 'text', 'md']);
+  assert.equal(rows[2][0].text, '**Heading**\n• a\n• b');
 });
