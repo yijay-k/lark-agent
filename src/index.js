@@ -5,7 +5,7 @@ import { createLark, usageKey } from './lark.js';
 import { createStore } from './store.js';
 import { onMessage, answerQuestion, answerDirect } from './handlers.js';
 import { runCron } from './cron.js';
-import { onMembersAdded, onChatEntered, welcomeText } from './onboard.js';
+import { onMembersAdded, onChatEntered, welcomeText, welcomeOnce } from './onboard.js';
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -53,8 +53,14 @@ export default {
       const { name, openId, send } = await request.json();
       const logs = [];
       const text = welcomeText({ name });
-      if (send && openId) await createLark(env, fetch, createStore(env.DB)).sendPostToUser(openId, '👋 Welcome to AI Exploration', text);
-      return json({ text, sent: Boolean(send && openId), logs });
+      if (!(send && openId)) return json({ text, sent: false, logs });
+      const store = createStore(env.DB);
+      try {
+        const sent = await welcomeOnce({ lark: createLark(env, fetch, store), store, openId, name, log: (l) => logs.push(l) });
+        return json({ text, sent, alreadyWelcomed: !sent, logs });
+      } catch (err) {
+        return json({ text, sent: false, error: err.message, logs }, 502);
+      }
     }
     if (request.method === 'POST' && url.pathname === '/debug/usage') {
       if (!env.DEBUG_KEY || request.headers.get('x-debug-key') !== env.DEBUG_KEY) return new Response('Not found', { status: 404 });

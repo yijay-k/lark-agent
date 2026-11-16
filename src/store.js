@@ -43,6 +43,7 @@ export function createStore(db) {
     async briefed(chatId, kind) {
       return Boolean(await db.prepare('SELECT 1 FROM briefings WHERE chat_id = ? AND kind = ?').bind(chatId, kind).first());
     },
+    unmarkBriefed: (chatId, kind) => db.prepare('DELETE FROM briefings WHERE chat_id = ? AND kind = ?').bind(chatId, kind).run(),
     markBriefed: (chatId, kind) =>
       db.prepare('INSERT OR IGNORE INTO briefings (chat_id, kind, at) VALUES (?, ?, ?)').bind(chatId, kind, Date.now()).run(),
   };

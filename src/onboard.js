@@ -11,8 +11,15 @@ export function welcomeText({ name }) {
 // Sends the welcome to one person unless they already got it. Returns true if it was sent now.
 export async function welcomeOnce({ lark, store, openId, name, log = console.log }) {
   if (!openId || (await store.briefed('onboard', openId))) return false;
-  await store.markBriefed('onboard', openId);
-  await lark.sendPostToUser(openId, '👋 Welcome to AI Exploration', welcomeText({ name }));
+  await store.markBriefed('onboard', openId); // first, so two events at once can't double-send
+  try {
+    await lark.sendPostToUser(openId, '👋 Welcome to AI Exploration', welcomeText({ name }));
+  } catch (err) {
+    // Not welcomed after all (e.g. Lark 230013: the app isn't available to this person yet): try again next time.
+    await store.unmarkBriefed('onboard', openId).catch(() => {});
+    log(`welcome to ${openId.slice(0, 8)}… failed: ${err.message}`);
+    throw err;
+  }
   log(`welcomed ${openId.slice(0, 8)}…`);
   return true;
 }
@@ -30,7 +37,7 @@ export async function onMembersAdded({ env, lark, store, event, log = console.lo
   if (!env.ONBOARDING_CHAT_ID || event?.chat_id !== env.ONBOARDING_CHAT_ID) return 0;
   let sent = 0;
   for (const user of event.users || []) {
-    if (await welcomeOnce({ lark, store, openId: user.user_id?.open_id, name: user.name, log })) sent += 1;
+    if (await welcomeOnce({ lark, store, openId: user.user_id?.open_id, name: user.name, log }).catch(() => false)) sent += 1;
   }
   return sent;
 }

@@ -25,6 +25,7 @@ function fakeStore() {
     savePage: async () => {},
     briefed: async (c, k) => briefings.has(`${c}|${k}`),
     markBriefed: async (c, k) => { briefings.add(`${c}|${k}`); },
+    unmarkBriefed: async (c, k) => { briefings.delete(`${c}|${k}`); },
     kvGet: async () => undefined,
     kvSet: async () => {},
     bump: async () => {},
@@ -298,4 +299,14 @@ test('Eleyna speaks first: a new person gets the welcome before anything else, o
   q.sender.sender_id.open_id = 'ou_other';
   assert.equal(await onMessage({ env, lark: lark2, store: store2, event: q, log: () => {}, fetchImpl: fakeFetch }), 'answered');
   assert.deepEqual(sent.map((x) => x[0]), ['ou_new', 'ou_other']);
+});
+
+test('a failed welcome is not counted, so it is retried later', async () => {
+  const { welcomeOnce } = await import('../src/onboard.js');
+  const store = fakeStore();
+  const failing = { sendPostToUser: async () => { throw new Error('Lark 230013 Bot has NO availability to this user'); } };
+  await assert.rejects(welcomeOnce({ lark: failing, store, openId: 'ou_x', name: 'X', log: () => {} }), /230013/);
+  assert.equal(await store.briefed('onboard', 'ou_x'), false);
+  const ok = { sendPostToUser: async () => {} };
+  assert.equal(await welcomeOnce({ lark: ok, store, openId: 'ou_x', name: 'X', log: () => {} }), true);
 });
