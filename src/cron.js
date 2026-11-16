@@ -1,4 +1,4 @@
-// Every 10 minutes: add people who accepted any of a group's events, and post the
+// Every 6 hours (the cron in wrangler.toml): add people who accepted any of a group's events, and post the
 // group's "Good to know" note once, plus a reminder the day before.
 
 import { eventIdsFromDescription } from './text.js';
