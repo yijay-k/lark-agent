@@ -2,6 +2,7 @@
 
 import { messageText, findLinks, isBotMentioned, isResearch, isUsageQuestion } from './text.js';
 import { recordAnswer, usageNumbers, usageReport } from './usage.js';
+import { nextEnding, endingRule } from './roast.js';
 import { groupContext, personContext, contextText } from './context.js';
 import { answerSystem, answerPrompt, researchAddon, dmSystem } from './prompts.js';
 import { think } from './brain.js';
@@ -59,7 +60,8 @@ export async function answerQuestion({ env, lark, store, chatId, question, asker
   const t0 = Date.now();
   const research = isResearch(question);
   const ctx = await groupContext({ env, lark, store, chatId, fetchImpl, log, deep: research, question });
-  const system = answerSystem(ctx.name, ctx.description, ctx.events.length > 0, today(tz)) + (research ? researchAddon() : '');
+  const ending = await nextEnding(store, chatId);
+  const system = answerSystem(ctx.name, ctx.description, ctx.events.length > 0, today(tz)) + (research ? researchAddon() : '') + endingRule(ending);
   const answer = await think(env, system, answerPrompt(contextText(ctx), question, asker), log, fetchImpl, { search: research });
   log(`answer via ${answer.via}: ${Date.now() - t0} ms total`);
   return answer;
@@ -76,7 +78,7 @@ async function onDirectMessage({ env, lark, store, msg, sender, text, log, fetch
   await lark.react(msg.message_id, 'OnIt').catch((err) => log(`react failed: ${err.message}`));
   const tz = env.TIMEZONE || 'Asia/Kuala_Lumpur';
   const ctx = await personContext({ lark, store, chatId: msg.chat_id, userId, question: text, log, fetchImpl });
-  const answer = await think(env, dmSystem(today(tz)), answerPrompt(contextText(ctx), text, 'them'), log, fetchImpl);
+  const answer = await think(env, dmSystem(today(tz)) + endingRule(await nextEnding(store, msg.chat_id)), answerPrompt(contextText(ctx), text, 'them'), log, fetchImpl);
   await lark.replyPost(msg.message_id, '', answer.text);
   await recordAnswer(store, answer);
   log(`answered DM via ${answer.via}, ${answer.tokens} tokens`);
@@ -87,7 +89,7 @@ async function onDirectMessage({ env, lark, store, msg, sender, text, log, fetch
 export async function answerDirect({ env, lark, store, chatId, userId, question, log = console.log, fetchImpl = fetch }) {
   const tz = env.TIMEZONE || 'Asia/Kuala_Lumpur';
   const ctx = await personContext({ lark, store, chatId, userId, question, log, fetchImpl });
-  return think(env, dmSystem(today(tz)), answerPrompt(contextText(ctx), question, 'them'), log, fetchImpl);
+  return think(env, dmSystem(today(tz)) + endingRule(await nextEnding(store, chatId)), answerPrompt(contextText(ctx), question, 'them'), log, fetchImpl);
 }
 
 export { today };

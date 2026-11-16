@@ -220,3 +220,17 @@ test('usage questions are answered from counters, without the AI', async () => {
   assert.match(report, /412 \/ 10,000/);
   assert.match(report, /35 by Gemini, 2 by the backup/);
 });
+
+test('roast endings rotate: never the same as the last two, knife-twist is rare', async () => {
+  const { pickEnding } = await import('../src/roast.js');
+  let recent = [];
+  const counts = {};
+  for (let i = 0; i < 400; i += 1) {
+    const e = pickEnding(recent);
+    assert.ok(!recent.slice(-2).includes(e), `repeated ${e}`);
+    counts[e] = (counts[e] || 0) + 1;
+    recent = [...recent, e].slice(-6);
+  }
+  assert.ok(counts.knife < counts.chatgpt && counts.knife < counts.diy, JSON.stringify(counts));
+  assert.ok(Object.keys(counts).length === 4);
+});
