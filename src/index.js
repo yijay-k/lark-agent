@@ -52,7 +52,7 @@ export default {
       if (!env.DEBUG_KEY || request.headers.get('x-debug-key') !== env.DEBUG_KEY) return new Response('Not found', { status: 404 });
       const { name, openId, send } = await request.json();
       const logs = [];
-      const text = await welcomeText({ env, name, log: (l) => logs.push(l) });
+      const text = welcomeText({ name });
       if (send && openId) await createLark(env, fetch, createStore(env.DB)).sendPostToUser(openId, '👋 Welcome to AI Exploration', text);
       return json({ text, sent: Boolean(send && openId), logs });
     }

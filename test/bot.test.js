@@ -256,3 +256,13 @@ test('the handbook is part of what Eleyna knows about the club', async () => {
   assert.match(answerSystem('Team', '', false, 'today'), /Project 001/);
   assert.doesNotMatch(answerSystem('AiSED', '', true, 'today'), /Idiot's Vision/);
 });
+
+test('the welcome is the approved text with only the name filled in', async () => {
+  const { welcomeText } = await import('../src/onboard.js');
+  const text = welcomeText({ name: 'Sarah' });
+  assert.match(text, /^Hi Sarah! I'm Eleyna/);
+  assert.match(text, /slide into these DMs 😉/);
+  assert.match(text, /big boss man, ping EJ/);
+  assert.doesNotMatch(text, /\{name\}/);
+  assert.match(welcomeText({ name: '' }), /^Hi there!/);
+});
