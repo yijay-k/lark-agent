@@ -17,7 +17,7 @@ export function createStore(db) {
         .run(),
     async recentMessages(chatId) {
       const { results } = await db
-        .prepare('SELECT sender_name, text, links, created_at FROM messages WHERE chat_id = ? ORDER BY created_at DESC LIMIT ?')
+        .prepare('SELECT sender_id, sender_name, text, links, created_at FROM messages WHERE chat_id = ? ORDER BY created_at DESC LIMIT ?')
         .bind(chatId, RECENT_LIMIT)
         .all();
       return (results || []).reverse();
@@ -28,6 +28,18 @@ export function createStore(db) {
     },
     savePage: (url, text) =>
       db.prepare('INSERT OR REPLACE INTO pages (url, text, fetched_at) VALUES (?, ?, ?)').bind(url, text, Date.now()).run(),
+    // Small JSON cache (shares the pages table): value, or undefined when missing or older than ttlMs.
+    async kvGet(key, ttlMs) {
+      const row = await db.prepare('SELECT text, fetched_at FROM pages WHERE url = ?').bind(key).first();
+      if (!row || Date.now() - row.fetched_at >= ttlMs) return undefined;
+      try { return JSON.parse(row.text); } catch { return undefined; }
+    },
+    kvSet: (key, value) =>
+      db.prepare('INSERT OR REPLACE INTO pages (url, text, fetched_at) VALUES (?, ?, ?)').bind(key, JSON.stringify(value), Date.now()).run(),
+    bump: (key) => db.prepare('INSERT INTO counters (key, n) VALUES (?, 1) ON CONFLICT(key) DO UPDATE SET n = n + 1').bind(key).run(),
+    async counter(key) {
+      return (await db.prepare('SELECT n FROM counters WHERE key = ?').bind(key).first())?.n || 0;
+    },
     async briefed(chatId, kind) {
       return Boolean(await db.prepare('SELECT 1 FROM briefings WHERE chat_id = ? AND kind = ?').bind(chatId, kind).first());
     },

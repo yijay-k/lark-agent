@@ -1,7 +1,7 @@
 // Cloudflare Worker entry: Lark webhook (POST /lark/events) and the 10-minute cron.
 
 import { decryptLark, signatureOk } from './crypto.js';
-import { createLark } from './lark.js';
+import { createLark, usageKey } from './lark.js';
 import { createStore } from './store.js';
 import { onMessage, answerQuestion, answerDirect } from './handlers.js';
 import { runCron } from './cron.js';
@@ -39,12 +39,18 @@ export default {
       const { chatId, question, dmUserId } = await request.json();
       const logs = [];
       try {
-        const deps = { env, lark: createLark(env), store: createStore(env.DB), chatId, question, log: (l) => logs.push(l) };
+        const store = createStore(env.DB);
+        const deps = { env, lark: createLark(env, fetch, store), store, chatId, question, log: (l) => logs.push(l) };
         const answer = dmUserId ? await answerDirect({ ...deps, userId: dmUserId }) : await answerQuestion({ ...deps, asker: 'Claude (test)' });
         return json({ ...answer, logs });
       } catch (err) {
         return json({ error: err.message, logs }, 500);
       }
+    }
+    if (request.method === 'POST' && url.pathname === '/debug/usage') {
+      if (!env.DEBUG_KEY || request.headers.get('x-debug-key') !== env.DEBUG_KEY) return new Response('Not found', { status: 404 });
+      const key = usageKey();
+      return json({ month: key.slice(-7), larkCalls: await createStore(env.DB).counter(key), freePlanLimit: 10000 });
     }
     if (request.method === 'POST' && url.pathname === '/debug/models') {
       if (!env.DEBUG_KEY || request.headers.get('x-debug-key') !== env.DEBUG_KEY) return new Response('Not found', { status: 404 });
@@ -65,8 +71,8 @@ export default {
     const eventType = body.header?.event_type;
     const eventId = body.header?.event_id;
     if (eventType === 'im.message.receive_v1' && eventId) {
-      const lark = createLark(env);
       const store = createStore(env.DB);
+      const lark = createLark(env, fetch, store);
       // Answer Lark at once (it retries after 3 s); do the work in the background.
       ctx.waitUntil(
         (async () => {
@@ -79,6 +85,7 @@ export default {
   },
 
   async scheduled(_controller, env, ctx) {
-    ctx.waitUntil(runCron({ env, lark: createLark(env), store: createStore(env.DB) }).catch((err) => console.log(`cron failed: ${err.message}`)));
+    const store = createStore(env.DB);
+    ctx.waitUntil(runCron({ env, lark: createLark(env, fetch, store), store }).catch((err) => console.log(`cron failed: ${err.message}`)));
   },
 };

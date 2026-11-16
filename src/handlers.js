@@ -20,14 +20,13 @@ export async function onMessage({ env, lark, store, event, log = console.log, fe
 
   // Every group the bot is in. Each group's memory is kept apart by chat_id; nothing crosses groups.
 
+  // A plain message costs no Lark API call: names are looked up only when answering.
   const senderId = sender.sender_id?.open_id;
-  const members = await lark.chatMembers(msg.chat_id).catch(() => []);
-  const senderName = members.find((m) => m.member_id === senderId)?.name || 'someone';
   await store.saveMessage({
     messageId: msg.message_id,
     chatId: msg.chat_id,
     senderId,
-    senderName,
+    senderName: '',
     text,
     links: findLinks(text),
     createdAt: Number(msg.create_time || Date.now()),
@@ -40,6 +39,8 @@ export async function onMessage({ env, lark, store, event, log = console.log, fe
   }
   // Lark has no "typing…" for bots: an emoji on the question shows it's being worked on.
   await lark.react(msg.message_id, 'OnIt').catch((err) => log(`react failed: ${err.message}`));
+  const members = await lark.chatMembers(msg.chat_id).catch(() => []);
+  const senderName = members.find((m) => m.member_id === senderId)?.name || 'a member';
   const answer = await answerQuestion({ env, lark, store, chatId: msg.chat_id, question: text, asker: senderName, log, fetchImpl });
   await lark.replyPost(msg.message_id, '', answer.text);
   log(`answered in ${msg.chat_id} via ${answer.via}`);

@@ -15,3 +15,6 @@ CREATE TABLE IF NOT EXISTS seen_events (event_id TEXT PRIMARY KEY, seen_at INTEG
 CREATE TABLE IF NOT EXISTS pages (url TEXT PRIMARY KEY, text TEXT, fetched_at INTEGER NOT NULL);
 
 CREATE TABLE IF NOT EXISTS briefings (chat_id TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (chat_id, kind));
+
+-- Usage counters, e.g. Lark API calls per month (Lark's free plan allows ~10,000 a month).
+CREATE TABLE IF NOT EXISTS counters (key TEXT PRIMARY KEY, n INTEGER NOT NULL);

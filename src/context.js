@@ -101,8 +101,10 @@ export async function groupContext({ env, lark, store, chatId, fetchImpl = fetch
   const pages = links.map((url, i) => ({ url, text: pageTexts[i] })).filter((p) => p.text);
   if (deep && links.length > 0) pages.push(...(await morePages(links[0], links, store, fetchImpl, log)));
   lap('pages');
+  const names = new Map((await lark.chatMembers(chatId).catch(() => [])).map((m) => [m.member_id, m.name]));
+  const chat = chatSoFar.map((m) => ({ ...m, sender_name: m.sender_name || names.get(m.sender_id) || 'someone' }));
   lap('chat');
-  return { name: info.name || 'this group', description: info.description || '', pins, events, pages, chat: chatSoFar };
+  return { name: info.name || 'this group', description: info.description || '', pins, events, pages, chat };
 }
 
 export function contextText(ctx) {

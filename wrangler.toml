@@ -2,9 +2,10 @@ name = "lark-event-bot"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 
-# Every 10 minutes: add people who accepted, post "Good to know" notes.
+# Every 6 hours: add people who accepted, post "Good to know" notes. (Kept rare: Lark's free
+# plan allows ~10,000 API calls a month for the whole organisation.)
 [triggers]
-crons = ["*/10 * * * *"]
+crons = ["0 */6 * * *"]
 
 # Cloudflare's own free AI, used only when Gemini fails or runs out of free quota.
 [ai]

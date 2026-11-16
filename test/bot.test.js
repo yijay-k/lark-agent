@@ -25,6 +25,9 @@ function fakeStore() {
     savePage: async () => {},
     briefed: async (c, k) => briefings.has(`${c}|${k}`),
     markBriefed: async (c, k) => { briefings.add(`${c}|${k}`); },
+    kvGet: async () => undefined,
+    kvSet: async () => {},
+    bump: async () => {},
   };
 }
 
@@ -96,7 +99,7 @@ test('messages are remembered; the bot answers only when @mentioned, from that g
   const lark = fakeLark();
   const store = fakeStore();
   assert.equal(await onMessage({ env, lark, store, event: groupMessage('we meet at 8'), log: () => {}, fetchImpl: fakeFetch }), 'saved');
-  assert.equal(store.messages[0].senderName, 'Yi Koh');
+  assert.equal(store.messages[0].senderId, ME);
   assert.equal(lark.calls.length, 0);
   assert.equal(await onMessage({ env, lark, store, event: groupMessage('@_user_1 where to park?', [{ id: { open_id: BOT } }]), log: () => {}, fetchImpl: fakeFetch }), 'answered');
   assert.deepEqual(lark.calls.map((c) => c[0]), ['react', 'reply']);

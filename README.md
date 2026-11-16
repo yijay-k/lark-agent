@@ -8,14 +8,14 @@ An always-on helper inside each Lark event group. It runs on Cloudflare's free p
 - **Private messages**: DM Eleyna (no @ needed). In a DM it knows the events of every event group you're in.
 - **Research mode**: questions like "who are the panelists, should I go?" make it open more pages of the official site (speakers, agenda), try a web search, and give a short verdict.
 - **Only event groups**: in any group without an `event:` tag it stays silent and stores nothing.
-- **Adds people who accept any of the group's events** (the group's description lists them as `event:<id>`), every 10 minutes. It never removes anyone.
+- **Adds people who accept any of the group's events** (the group's description lists them as `event:<id>`), every 6 hours. It never removes anyone.
 
 **Brain:** `GEMINI_MODELS` in order (Gemini 3.5 Flash-Lite with thinking off, then 3.8 Flash), then Cloudflare Workers AI (`BACKUP_MODEL`, Llama 3.3 70B fast), all inside one 25 s budget, because Cloudflare's free plan gives a Lark message 30 s of background time. Typical answer: 4–10 s. Google Search is tried only for research questions; the free tier currently refuses it (429), which costs ~0.3 s. Providers retire models often: if answers stop, check `npx wrangler tail` and change the model names in `wrangler.toml`. Nothing is billed: neither service has a card on file, and free plans stop rather than charge.
 
 ## Files
 | File | What it does |
 |---|---|
-| `src/index.js` | Webhook `POST /lark/events` (decrypts, checks the signature) and the 10-minute cron |
+| `src/index.js` | Webhook `POST /lark/events` (decrypts, checks the signature) and the 6-hour cron |
 | `src/handlers.js` | Saves each group message; answers @mentions |
 | `src/cron.js` | Auto-join and the briefings |
 | `src/context.js` | Builds one group's context: pins, events, official pages (cached 24 h), chat |

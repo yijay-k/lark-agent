@@ -16,7 +16,7 @@ export async function syncMembers({ lark, chatId, eventIds, calendarId }) {
     const attendees = await lark.eventAttendees(calendarId, id).catch(() => []);
     attendees.filter((a) => a.type === 'user' && a.rsvp_status === 'accept' && a.user_id).forEach((a) => accepted.add(a.user_id));
   }
-  const members = new Set((await lark.chatMembers(chatId)).map((m) => m.member_id));
+  const members = new Set((await (lark.chatMembersFresh || lark.chatMembers)(chatId)).map((m) => m.member_id));
   const missing = [...accepted].filter((id) => !members.has(id));
   if (missing.length > 0) await lark.addMembers(chatId, missing);
   return missing;
@@ -43,6 +43,9 @@ export async function runCron({ env, lark, store, log = console.log, fetchImpl =
   for (const group of groups) {
     const eventIds = eventIdsFromDescription(group.description);
     try {
+      // Nothing to do for a group whose events are all over: saves Lark API calls.
+      const events = (await Promise.all(eventIds.map((id) => lark.getEvent(calendarId, id).catch(() => null)))).filter((e) => e && e.status !== 'cancelled');
+      if (events.length === 0 || events.every((e) => Number(e.end_time?.timestamp) * 1000 < now)) continue;
       const added = await syncMembers({ lark, chatId: group.chat_id, eventIds, calendarId });
       if (added.length > 0) log(`added ${added.length} to ${group.chat_id}`);
       // Notes wait for Gemini: the backup brain can't search, so it would write a thinner note.
@@ -50,9 +53,7 @@ export async function runCron({ env, lark, store, log = console.log, fetchImpl =
       if (!(await store.briefed(group.chat_id, 'intro'))) {
         await brief({ env, lark, store, chatId: group.chat_id, kind: 'intro', log, fetchImpl });
       }
-      const starts = (await Promise.all(eventIds.map((id) => lark.getEvent(calendarId, id).catch(() => null))))
-        .filter((e) => e && e.status !== 'cancelled')
-        .map((e) => Number(e.start_time?.timestamp));
+      const starts = events.map((e) => Number(e.start_time?.timestamp));
       const first = Math.min(...starts);
       const tomorrow = dayKey(now / 1000 + DAY_S, tz);
       const eveKind = `eve:${dayKey(first, tz)}`;
