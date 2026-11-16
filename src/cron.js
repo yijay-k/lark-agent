@@ -6,6 +6,7 @@ import { groupContext, contextText } from './context.js';
 import { briefingSystem, briefingPrompt } from './prompts.js';
 import { think } from './brain.js';
 import { today } from './handlers.js';
+import { checkAlerts } from './usage.js';
 
 const DAY_S = 86400;
 
@@ -37,6 +38,7 @@ async function brief({ env, lark, store, chatId, kind, log, fetchImpl }) {
 
 export async function runCron({ env, lark, store, log = console.log, fetchImpl = fetch, now = Date.now() }) {
   const tz = env.TIMEZONE || 'Asia/Kuala_Lumpur';
+  await checkAlerts({ env, lark, store, log }).catch((err) => log(`alerts: ${err.message}`));
   const groups = (await lark.listChats()).filter((c) => eventIdsFromDescription(c.description).length > 0);
   if (groups.length === 0) return;
   const calendarId = await lark.primaryCalendarId();

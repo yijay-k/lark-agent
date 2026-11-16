@@ -36,7 +36,7 @@ export function createStore(db) {
     },
     kvSet: (key, value) =>
       db.prepare('INSERT OR REPLACE INTO pages (url, text, fetched_at) VALUES (?, ?, ?)').bind(key, JSON.stringify(value), Date.now()).run(),
-    bump: (key) => db.prepare('INSERT INTO counters (key, n) VALUES (?, 1) ON CONFLICT(key) DO UPDATE SET n = n + 1').bind(key).run(),
+    bump: (key, by = 1) => db.prepare('INSERT INTO counters (key, n) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET n = n + excluded.n').bind(key, by).run(),
     async counter(key) {
       return (await db.prepare('SELECT n FROM counters WHERE key = ?').bind(key).first())?.n || 0;
     },

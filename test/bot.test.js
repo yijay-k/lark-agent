@@ -178,7 +178,9 @@ test('brain: Gemini with search, then without, then the free backup', async () =
   assert.deepEqual(seen, ['search', 'plain', 'search', 'plain']);
   assert.equal(out.via, 'workers-ai');
   const ok = async () => ({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'hi' }] } }] }) });
-  assert.deepEqual(await think({ GEMINI_API_KEY: 'k' }, 's', 'p', () => {}, ok), { text: 'hi', via: 'gemini-3.5-flash-lite' });
+  const r = await think({ GEMINI_API_KEY: 'k' }, 's', 'p', () => {}, ok);
+  assert.equal(r.text, 'hi');
+  assert.equal(r.via, 'gemini-3.5-flash-lite');
 });
 
 test('lark client: reads results with or without the data wrapper (bot info has none)', async () => {
@@ -198,4 +200,23 @@ test('wiki pages are ranked by the question', async () => {
   const index = ['Introduction', 'Core Philosophy', "THE IDIOT'S VISION", 'Project 001', 'AI Exploration Hub', 'Meeting notes'].map((title, i) => ({ title, token: `d${i}` }));
   assert.equal(rankPages(index, 'what is our core philosophy?')[0].title, 'Core Philosophy');
   assert.equal(rankPages(index, 'tell me about project 001')[0].title, 'Project 001');
+});
+
+test('token trimming keeps only the page lines the question needs', async () => {
+  const { relevantLines, keywords } = await import('../src/text.js');
+  const page = 'Welcome to the conference\nParking: SITC basement\nRates: RM2.50 first hour\nKeynote 2 by UNESCO\nSponsors: many';
+  assert.equal(relevantLines(page, 'where is parking?', 1000), 'Parking: SITC basement\nRates: RM2.50 first hour');
+  assert.ok(relevantLines(page, 'parking', 10).length <= 10);
+  assert.deepEqual(keywords('What is the dress code?'), ['dress', 'code']);
+});
+
+test('usage questions are answered from counters, without the AI', async () => {
+  const { isUsageQuestion } = await import('../src/text.js');
+  const { usageReport } = await import('../src/usage.js');
+  assert.equal(isUsageQuestion("what's your credit?"), true);
+  assert.equal(isUsageQuestion('usage'), true);
+  assert.equal(isUsageQuestion('where do I park?'), false);
+  const report = usageReport({ month: '2026-11', lark: 412, percent: 4, pace: 800, answers: 37, tokens: 180000, backup: 2 });
+  assert.match(report, /412 \/ 10,000/);
+  assert.match(report, /35 by Gemini, 2 by the backup/);
 });

@@ -30,7 +30,7 @@ async function gemini(env, model, system, prompt, withSearch, fetchImpl, timeout
   if (!res.ok) throw new Error(`Gemini ${res.status}: ${body.error?.message || 'error'}`);
   const text = (body.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('').trim();
   if (!text) throw new Error('Gemini returned no text');
-  return text;
+  return { text, tokens: Number(body.usageMetadata?.totalTokenCount || 0), promptTokens: Number(body.usageMetadata?.promptTokenCount || 0) };
 }
 
 async function workersAi(env, system, prompt, timeoutMs) {
@@ -42,7 +42,7 @@ async function workersAi(env, system, prompt, timeoutMs) {
   // Older Workers AI models answer { response }, newer ones the OpenAI shape { choices }.
   const text = String(out?.response ?? out?.choices?.[0]?.message?.content ?? '').trim();
   if (!text) throw new Error('Workers AI returned no text');
-  return text;
+  return { text, tokens: Number(out?.usage?.total_tokens || 0), promptTokens: Number(out?.usage?.prompt_tokens || 0) };
 }
 
 // Returns { text, via } so the log shows which brain answered.
@@ -61,9 +61,9 @@ export async function think(env, system, prompt, log = () => {}, fetchImpl = fet
         if (timeoutMs < MIN_TRY_MS) break;
         const t0 = Date.now();
         try {
-          const text = await gemini(env, model, system, prompt, withSearch, fetchImpl, timeoutMs);
-          log(`${model}${withSearch ? '+search' : ''}: ${Date.now() - t0} ms`);
-          return { text, via: model + (withSearch ? '+search' : '') };
+          const out = await gemini(env, model, system, prompt, withSearch, fetchImpl, timeoutMs);
+          log(`${model}${withSearch ? '+search' : ''}: ${Date.now() - t0} ms, ${out.promptTokens} prompt tokens`);
+          return { ...out, via: model + (withSearch ? '+search' : '') };
         } catch (err) {
           log(`brain: ${model}${withSearch ? '+search' : ''} failed after ${Date.now() - t0} ms: ${err.name === 'TimeoutError' ? 'timed out' : err.message.slice(0, 120)}`);
         }
@@ -72,9 +72,9 @@ export async function think(env, system, prompt, log = () => {}, fetchImpl = fet
   }
   if (env.AI) {
     const t0 = Date.now();
-    const text = await workersAi(env, system, prompt, Math.max(left(), MIN_TRY_MS));
+    const out = await workersAi(env, system, prompt, Math.max(left(), MIN_TRY_MS));
     log(`workers-ai: ${Date.now() - t0} ms`);
-    return { text, via: 'workers-ai' };
+    return { ...out, via: 'workers-ai' };
   }
   throw new Error('No AI available (set GEMINI_API_KEY or bind Workers AI).');
 }

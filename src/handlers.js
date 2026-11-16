@@ -1,6 +1,7 @@
 // Group messages: remember every one; answer when the bot is @mentioned.
 
-import { messageText, findLinks, isBotMentioned, isResearch } from './text.js';
+import { messageText, findLinks, isBotMentioned, isResearch, isUsageQuestion } from './text.js';
+import { recordAnswer, usageNumbers, usageReport } from './usage.js';
 import { groupContext, personContext, contextText } from './context.js';
 import { answerSystem, answerPrompt, researchAddon, dmSystem } from './prompts.js';
 import { think } from './brain.js';
@@ -37,13 +38,18 @@ export async function onMessage({ env, lark, store, event, log = console.log, fe
     log(`saved in ${msg.chat_id} (not addressed to the bot)`);
     return 'saved';
   }
+  if (isUsageQuestion(text)) {
+    await lark.replyPost(msg.message_id, '', usageReport(await usageNumbers(store)));
+    return 'usage';
+  }
   // Lark has no "typing…" for bots: an emoji on the question shows it's being worked on.
   await lark.react(msg.message_id, 'OnIt').catch((err) => log(`react failed: ${err.message}`));
   const members = await lark.chatMembers(msg.chat_id).catch(() => []);
   const senderName = members.find((m) => m.member_id === senderId)?.name || 'a member';
   const answer = await answerQuestion({ env, lark, store, chatId: msg.chat_id, question: text, asker: senderName, log, fetchImpl });
   await lark.replyPost(msg.message_id, '', answer.text);
-  log(`answered in ${msg.chat_id} via ${answer.via}`);
+  await recordAnswer(store, answer);
+  log(`answered in ${msg.chat_id} via ${answer.via}, ${answer.tokens} tokens`);
   return 'answered';
 }
 
@@ -63,12 +69,17 @@ export async function answerQuestion({ env, lark, store, chatId, question, asker
 async function onDirectMessage({ env, lark, store, msg, sender, text, log, fetchImpl }) {
   const userId = sender.sender_id?.open_id;
   await store.saveMessage({ messageId: msg.message_id, chatId: msg.chat_id, senderId: userId, senderName: 'you', text, links: findLinks(text), createdAt: Number(msg.create_time || Date.now()) });
+  if (isUsageQuestion(text)) {
+    await lark.replyPost(msg.message_id, '', usageReport(await usageNumbers(store)));
+    return 'usage';
+  }
   await lark.react(msg.message_id, 'OnIt').catch((err) => log(`react failed: ${err.message}`));
   const tz = env.TIMEZONE || 'Asia/Kuala_Lumpur';
   const ctx = await personContext({ lark, store, chatId: msg.chat_id, userId, question: text, log, fetchImpl });
   const answer = await think(env, dmSystem(today(tz)), answerPrompt(contextText(ctx), text, 'them'), log, fetchImpl);
   await lark.replyPost(msg.message_id, '', answer.text);
-  log(`answered DM via ${answer.via}`);
+  await recordAnswer(store, answer);
+  log(`answered DM via ${answer.via}, ${answer.tokens} tokens`);
   return 'answered';
 }
 

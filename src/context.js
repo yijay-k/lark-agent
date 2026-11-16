@@ -1,10 +1,16 @@
 // Everything the bot knows about one group: its pinned card, its calendar events,
 // the official pages linked from them, and the chat so far. Each group sees only its own.
 
-import { messageText, findLinks, eventIdsFromDescription, htmlToText, usefulSameSiteLinks } from './text.js';
+import { messageText, findLinks, eventIdsFromDescription, htmlToText, usefulSameSiteLinks, relevantLines } from './text.js';
 import { knowledgeFor } from './knowledge.js';
 
 const MAX_PAGES = 4;
+// Token budget: page text is cut to the lines the question needs; chat to the latest messages.
+const PAGE_CHARS = 1200;
+const PAGE_CHARS_RESEARCH = 3500;
+const CHAT_MESSAGES = 30;
+const CHAT_LINE_CHARS = 300;
+const EVENT_DESC_CHARS = 700;
 
 // Lark's own links, forms and maps aren't readable pages.
 function readableLink(u) {
@@ -86,7 +92,7 @@ export async function groupContext({ env, lark, store, chatId, fetchImpl = fetch
     for (const [i, e] of fetched.entries()) {
       const id = eventIds[i];
       if (e && e.status !== 'cancelled') {
-        events.push({ id, summary: e.summary, start: e.start_time?.timestamp, text: `${e.summary}\n${formatTime(e.start_time?.timestamp, tz)} – ${formatTime(e.end_time?.timestamp, tz)}\nWhere: ${e.location?.name || ''} ${e.location?.address || ''}\n${e.description || ''}` });
+        events.push({ id, summary: e.summary, start: e.start_time?.timestamp, text: `${e.summary}\n${formatTime(e.start_time?.timestamp, tz)} – ${formatTime(e.end_time?.timestamp, tz)}\nWhere: ${e.location?.name || ''} ${e.location?.address || ''}\n${String(e.description || '').slice(0, EVENT_DESC_CHARS)}` });
       }
     }
   }
@@ -98,11 +104,15 @@ export async function groupContext({ env, lark, store, chatId, fetchImpl = fetch
     .slice(0, MAX_PAGES);
   lap('events');
   const pageTexts = await Promise.all(links.map((url) => fetchPage(url, store, fetchImpl, log)));
-  const pages = links.map((url, i) => ({ url, text: pageTexts[i] })).filter((p) => p.text);
-  if (deep && links.length > 0) pages.push(...(await morePages(links[0], links, store, fetchImpl, log)));
+  const allPages = links.map((url, i) => ({ url, text: pageTexts[i] })).filter((p) => p.text);
+  if (deep && links.length > 0) allPages.push(...(await morePages(links[0], links, store, fetchImpl, log)));
+  const asked = new Set(findLinks(question));
+  const pages = allPages
+    .map((p) => ({ url: p.url, text: asked.has(p.url) ? p.text.slice(0, PAGE_CHARS_RESEARCH) : relevantLines(p.text, question, deep ? PAGE_CHARS_RESEARCH : PAGE_CHARS) }))
+    .filter((p) => p.text);
   lap('pages');
   const names = new Map((await lark.chatMembers(chatId).catch(() => [])).map((m) => [m.member_id, m.name]));
-  const chat = chatSoFar.map((m) => ({ ...m, sender_name: m.sender_name || names.get(m.sender_id) || 'someone' }));
+  const chat = chatSoFar.slice(-CHAT_MESSAGES).map((m) => ({ ...m, text: String(m.text || '').slice(0, CHAT_LINE_CHARS), sender_name: m.sender_name || names.get(m.sender_id) || 'someone' }));
   lap('chat');
   return { name: info.name || 'this group', description: info.description || '', pins, events, pages, chat };
 }

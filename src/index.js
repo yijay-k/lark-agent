@@ -50,7 +50,9 @@ export default {
     if (request.method === 'POST' && url.pathname === '/debug/usage') {
       if (!env.DEBUG_KEY || request.headers.get('x-debug-key') !== env.DEBUG_KEY) return new Response('Not found', { status: 404 });
       const key = usageKey();
-      return json({ month: key.slice(-7), larkCalls: await createStore(env.DB).counter(key), freePlanLimit: 10000 });
+      const { usageNumbers, usageReport } = await import('./usage.js');
+      const u = await usageNumbers(createStore(env.DB));
+      return json({ ...u, report: usageReport(u) });
     }
     if (request.method === 'POST' && url.pathname === '/debug/models') {
       if (!env.DEBUG_KEY || request.headers.get('x-debug-key') !== env.DEBUG_KEY) return new Response('Not found', { status: 404 });

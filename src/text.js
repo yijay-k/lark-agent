@@ -77,3 +77,30 @@ export function usefulSameSiteLinks(html, pageUrl, max = 4) {
   }
   return [...out].slice(0, max);
 }
+
+const STOPWORDS = new Set('the and for are you what when where who how can should does with this that from about have will there their they them your our its into been just also any all get got let tell give please much many some'.split(' '));
+
+export function keywords(text) {
+  return [...new Set((String(text || '').toLowerCase().match(/[a-z0-9]{3,}/g) || []).filter((w) => !STOPWORDS.has(w)))];
+}
+
+// Keep only the lines of a page that share a word with the question (plus the line after each),
+// up to maxChars. The pinned card already holds the essentials, so pages only add the specifics.
+export function relevantLines(text, question, maxChars) {
+  const words = keywords(question);
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  if (words.length === 0) return lines.join('\n').slice(0, maxChars);
+  const keep = new Set();
+  lines.forEach((line, i) => {
+    const lower = line.toLowerCase();
+    if (words.some((w) => lower.includes(w))) { keep.add(i); keep.add(i + 1); }
+  });
+  return [...keep].filter((i) => i < lines.length).sort((a, b) => a - b).map((i) => lines[i]).join('\n').slice(0, maxChars);
+}
+
+const USAGE_RE = /\b(usage|quota|credits?|tokens?|api calls?|how much (have you|did you|do you) (use|used|have)|how much (is )?left|limits?)\b/i;
+
+// "@Eleyna usage", "what's your credit?": answered from counters, without the AI.
+export function isUsageQuestion(text) {
+  return USAGE_RE.test(String(text || '')) && String(text || '').length < 120;
+}

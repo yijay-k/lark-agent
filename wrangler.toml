@@ -24,6 +24,8 @@ LARK_APP_ID = "cli_aa736a5711381e27"
 GEMINI_MODELS = "gemini-3.5-flash-lite,gemini-3.8-flash"
 BACKUP_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 TIMEZONE = "Asia/Kuala_Lumpur"
+# Where usage warnings (75%, 90% of Lark's monthly quota) go: Yi Jay's DM with the bot.
+ALERT_CHAT_ID = "oc_66af2472e698ba80919950b45e0117ea"
 
 # Secrets (never in this file): LARK_APP_SECRET, LARK_ENCRYPT_KEY, LARK_VERIFICATION_TOKEN, GEMINI_API_KEY
 # Set each with: npx wrangler secret put <NAME>
