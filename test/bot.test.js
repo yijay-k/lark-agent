@@ -234,3 +234,25 @@ test('roast endings rotate: never the same as the last two, knife-twist is rare'
   assert.ok(counts.knife < counts.chatgpt && counts.knife < counts.diy, JSON.stringify(counts));
   assert.ok(Object.keys(counts).length === 5);
 });
+
+test('onboarding: a new member of the club group gets one welcome DM; other groups and repeats are ignored', async () => {
+  const { onMembersAdded } = await import('../src/onboard.js');
+  const store = fakeStore();
+  const sent = [];
+  const lark = { sendPostToUser: async (id, title, md) => sent.push([id, md]) };
+  const envOn = { ...env, ONBOARDING_CHAT_ID: 'oc_team' };
+  const event = { chat_id: 'oc_team', users: [{ name: 'Sarah', user_id: { open_id: 'ou_sarah' } }] };
+  assert.equal(await onMembersAdded({ env: envOn, lark, store, event, log: () => {} }), 1);
+  assert.equal(await onMembersAdded({ env: envOn, lark, store, event, log: () => {} }), 0, 'only once');
+  assert.equal(await onMembersAdded({ env: envOn, lark, store, event: { ...event, chat_id: 'oc_other' }, log: () => {} }), 0);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0][0], 'ou_sarah');
+});
+
+test('the handbook is part of what Eleyna knows about the club', async () => {
+  const { dmSystem, answerSystem } = await import('../src/prompts.js');
+  assert.match(dmSystem('today'), /Explore\. Experiment\. Apply\. Share\./);
+  assert.match(dmSystem('today'), /First week/);
+  assert.match(answerSystem('Team', '', false, 'today'), /Project 001/);
+  assert.doesNotMatch(answerSystem('AiSED', '', true, 'today'), /Idiot's Vision/);
+});

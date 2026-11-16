@@ -8,6 +8,8 @@ An always-on helper inside each Lark event group. It runs on Cloudflare's free p
 - **Private messages**: DM Eleyna (no @ needed). In a DM it knows the events of every event group you're in.
 - **Research mode**: questions like "who are the panelists, should I go?" make it open more pages of the official site (speakers, agenda), try a web search, and give a short verdict.
 - **Only event groups**: in any group without an `event:` tag it stays silent and stores nothing.
+- **Onboarding**: anyone added to the club group (`ONBOARDING_CHAT_ID`) gets a welcome DM written from `src/handbook.js`. Needs the Lark event "User added to group" (`im.chat.member.user.added_v1`).
+- **Handbook** (`src/handbook.js`): what Eleyna says about the club and to new members. Owner-only.
 - **Adds people who accept any of the group's events** (the group's description lists them as `event:<id>`), every 6 hours. It never removes anyone.
 
 **Brain:** `GEMINI_MODELS` in order (Gemini 3.5 Flash-Lite with thinking off, then 3.8 Flash), then Cloudflare Workers AI (`BACKUP_MODEL`, Llama 3.3 70B fast), all inside one 25 s budget, because Cloudflare's free plan gives a Lark message 30 s of background time. Typical answer: 4–10 s. Google Search is tried only for research questions; the free tier currently refuses it (429), which costs ~0.3 s. Providers retire models often: if answers stop, check `npx wrangler tail` and change the model names in `wrangler.toml`. Nothing is billed: neither service has a card on file, and free plans stop rather than charge.

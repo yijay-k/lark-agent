@@ -25,6 +25,8 @@ GEMINI_MODELS = "gemini-3.5-flash-lite,gemini-3.8-flash"
 BACKUP_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 TIMEZONE = "Asia/Kuala_Lumpur"
 # Where usage warnings (75%, 90% of Lark's monthly quota) go: Yi Jay's DM with the bot.
+# New people added to this group get Eleyna's welcome DM (AI Exploration — Team).
+ONBOARDING_CHAT_ID = "oc_2d92c512c406d338c1e2d4a8c5965604"
 ALERT_CHAT_ID = "oc_66af2472e698ba80919950b45e0117ea"
 
 # Secrets (never in this file): LARK_APP_SECRET, LARK_ENCRYPT_KEY, LARK_VERIFICATION_TOKEN, GEMINI_API_KEY

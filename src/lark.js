@@ -66,6 +66,8 @@ export function createLark(env, fetchImpl = fetch, store = null) {
     wikiNodes: async (spaceId, parentToken) =>
       (await call('GET', `/wiki/v2/spaces/${spaceId}/nodes`, { query: { page_size: '50', ...(parentToken ? { parent_node_token: parentToken } : {}) } })).items || [],
     docText: async (documentId) => (await call('GET', `/docx/v1/documents/${documentId}/raw_content`)).content || '',
+    sendPostToUser: (openId, title, markdown) =>
+      call('POST', '/im/v1/messages', { query: { receive_id_type: 'open_id' }, json: { receive_id: openId, msg_type: 'post', content: postContent(title, markdown) } }),
     react: (messageId, emoji) =>
       call('POST', `/im/v1/messages/${messageId}/reactions`, { json: { reaction_type: { emoji_type: emoji } } }),
     primaryCalendarId: async () => (await call('POST', '/calendar/v4/calendars/primary')).calendars?.[0]?.calendar?.calendar_id,

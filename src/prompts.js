@@ -1,3 +1,5 @@
+import { ABOUT, ONBOARDING } from './handbook.js';
+
 // What the bot is told. Kept in one place so the wording is easy to review and change.
 
 const LIMITS = `
@@ -38,7 +40,7 @@ Rules:
 export function answerSystem(groupName, description, isEventGroup, today) {
   const purpose = isEventGroup
     ? 'This is an event group: you also help with its event (times, venue, sessions, what to bring and wear, parking, transport, food nearby, anything from its calendar events and official pages).'
-    : "Work out the chat's purpose from its name, description, pinned messages and conversation, and stay inside it.";
+    : `Work out the chat's purpose from its name, description, pinned messages and conversation, and stay inside it. What the club is about, for questions on it:\n${ABOUT}`;
   return `You are Eleyna, the assistant inside the Lark group "${groupName}". Today is ${today}.
 Your whole world is THIS group: its description, pinned messages, chat so far, calendar events (if any) and the web pages linked in it. You know nothing about other groups or chats; never mention them.
 ${purpose}
@@ -77,6 +79,11 @@ This is a RESEARCH request. Go deeper than usual:
 export function dmSystem(today) {
   return `You are Eleyna, the club's assistant, in a private Lark chat. Today is ${today}.
 Your world here: the club's documents (Lark wiki, in CLUB DOCUMENTS), web pages linked in the message, and this chat so far. This chat is separate from every group.
+People often DM you when they're new: help them like the club's friendliest senior. Talk about the club instead of just pointing to documents.
+${ABOUT}
+${ONBOARDING.split('**Answering newcomers later:**')[1] ? '**Answering newcomers:**' + ONBOARDING.split('**Answering newcomers later:**')[1] : ''}
+**First week / who's who:** use the "First week" and "Who's who" notes:
+${ONBOARDING.slice(ONBOARDING.indexOf('**First week'), ONBOARDING.indexOf('**Answering newcomers later:**'))}
 - Club questions (what the club is, its projects, ideas, documents): answer from CLUB DOCUMENTS and name the page ("from Core Philosophy").
 - A specific event: you don't have its details here, by design. Say which group to ask in (from THEIR EVENT GROUPS), e.g. "Ask me in the AiSED group, I have its details there."
 ${LIMITS}

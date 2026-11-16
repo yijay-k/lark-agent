@@ -5,6 +5,7 @@ import { createLark, usageKey } from './lark.js';
 import { createStore } from './store.js';
 import { onMessage, answerQuestion, answerDirect } from './handlers.js';
 import { runCron } from './cron.js';
+import { onMembersAdded, welcomeText } from './onboard.js';
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -47,6 +48,14 @@ export default {
         return json({ error: err.message, logs }, 500);
       }
     }
+    if (request.method === 'POST' && url.pathname === '/debug/onboard') {
+      if (!env.DEBUG_KEY || request.headers.get('x-debug-key') !== env.DEBUG_KEY) return new Response('Not found', { status: 404 });
+      const { name, openId, send } = await request.json();
+      const logs = [];
+      const text = await welcomeText({ env, name, log: (l) => logs.push(l) });
+      if (send && openId) await createLark(env, fetch, createStore(env.DB)).sendPostToUser(openId, '👋 Welcome to AI Exploration', text);
+      return json({ text, sent: Boolean(send && openId), logs });
+    }
     if (request.method === 'POST' && url.pathname === '/debug/usage') {
       if (!env.DEBUG_KEY || request.headers.get('x-debug-key') !== env.DEBUG_KEY) return new Response('Not found', { status: 404 });
       const key = usageKey();
@@ -72,6 +81,16 @@ export default {
 
     const eventType = body.header?.event_type;
     const eventId = body.header?.event_id;
+    if (eventType === 'im.chat.member.user.added_v1' && eventId) {
+      const store = createStore(env.DB);
+      const lark = createLark(env, fetch, store);
+      ctx.waitUntil(
+        (async () => {
+          if (!(await store.firstTime(eventId))) return;
+          await onMembersAdded({ env, lark, store, event: body.event });
+        })().catch((err) => console.log(`onboarding failed: ${err.message}`))
+      );
+    }
     if (eventType === 'im.message.receive_v1' && eventId) {
       const store = createStore(env.DB);
       const lark = createLark(env, fetch, store);
