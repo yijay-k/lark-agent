@@ -73,6 +73,14 @@ export function createLark(env, fetchImpl = fetch, store = null) {
     primaryCalendarId: async () => (await call('POST', '/calendar/v4/calendars/primary')).calendars?.[0]?.calendar?.calendar_id,
     getEvent: async (calendarId, eventId) =>
       (await call('GET', `/calendar/v4/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`)).event,
+    // Every event on the bot's calendar between two times (seconds).
+    listEvents: async (calendarId, startS, endS) =>
+      (await call('GET', `/calendar/v4/calendars/${encodeURIComponent(calendarId)}/events`, {
+        query: { start_time: String(startS), end_time: String(endS), page_size: '100' },
+      })).items || [],
+    // A card (JSON 2.0) as a reply, e.g. an answer with a Join button.
+    replyCard: (messageId, card) =>
+      call('POST', `/im/v1/messages/${messageId}/reply`, { json: { msg_type: 'interactive', content: JSON.stringify(card) } }),
     eventAttendees: async (calendarId, eventId) =>
       (await call('GET', `/calendar/v4/calendars/${encodeURIComponent(calendarId)}/events/${eventId}/attendees`, {
         query: { user_id_type: 'open_id', page_size: '100' },

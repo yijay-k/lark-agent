@@ -10,6 +10,7 @@ Eleyna is AI Exploration's **secretary, HR and onboarding guide**: she knows the
 | **Events**: event groups, pinned cards, reminders, auto-join on Accept | ✅ live |
 | **Group assistant**: every group, its own context only; summaries, shared links, announcements; cocky refusals for anything off-topic | ✅ live |
 | **Knowledge**: the club wiki in DMs, plus the Handbook's "AI Exploration in one minute" | ✅ live |
+| **Search & join**: DMs search every event, wiki section, group and (for members) its chat; she offers groups you're not in and adds you on Join / "yes" | ✅ live (Join button after the callback is set) |
 | **Onboarding**: anyone added to *AI Exploration — Team* gets a clean welcome DM (start-here reading list: Introduction & Our Mission, Core Philosophy, Hub, Project 001; good-to-know: calendar invites, @Eleyna, say hi to EJ; example questions) and can keep asking her | ✅ built; Eleyna speaks first (added to the team group, opens her DM, or first DM). Needs the Lark events "User added to group" and "User enters chat with bot", and the app's availability set to all members |
 | **Advisor**: "What should AI Exploration do next?" grounded in the wiki and recent chats | next |
 | **Club folder**: one Lark Drive folder shared with Eleyna, so she knows official docs beyond the wiki | next |
@@ -32,6 +33,6 @@ Eleyna is AI Exploration's **secretary, HR and onboarding guide**: she knows the
 > **Side note (later):** when the club has more members, move the Handbook into a locked Lark doc and assign one trusted "Eleyna manager" who knows how to prompt. Until then, Yi Jay controls all access; no knowledge-base editors yet.
 
 ## Lark settings Eleyna depends on
-- **Events & Callbacks** → request URL the Worker URL + `/lark/events` (`https://lark-event-bot.<subdomain>.workers.dev/lark/events`); events: Message received, User added to group, User enters chat with bot.
+- **Events & Callbacks** → request URL the Worker URL + `/lark/events` (`https://lark-event-bot.<subdomain>.workers.dev/lark/events`); events: Message received, User added to group, User enters chat with bot. **Callback configuration:** same URL, callback *card.action.trigger* (the Join button; then `JOIN_BUTTON = "on"`).
 - **Availability**: must include everyone she should talk to. Otherwise Lark refuses with `230013 Bot has NO availability to this user` (a failed welcome is retried later).
 - The Encrypt Key and Verification Token are Cloudflare secrets (`LARK_ENCRYPT_KEY`, `LARK_VERIFICATION_TOKEN`).

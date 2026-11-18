@@ -11,7 +11,7 @@ function words(text) {
 }
 
 // Every wiki page title (two levels deep), cached as one index.
-async function wikiIndex(lark, store, log) {
+export async function wikiIndex(lark, store, log) {
   const cached = await store.cachedPage(INDEX_KEY);
   if (cached) {
     try { return JSON.parse(cached); } catch { /* rebuild */ }
@@ -21,7 +21,7 @@ async function wikiIndex(lark, store, log) {
     const top = await lark.wikiNodes(space.space_id).catch(() => []);
     const children = await Promise.all(top.filter((n) => n.has_child).map((n) => lark.wikiNodes(space.space_id, n.node_token).catch(() => [])));
     for (const n of [...top, ...children.flat()].slice(0, MAX_NODES)) {
-      if (n.obj_type === 'docx') index.push({ space: space.name, title: n.title, token: n.obj_token, description: space.description || '' });
+      if (n.obj_type === 'docx') index.push({ space: space.name, title: n.title, token: n.obj_token, node: n.node_token, edited: n.obj_edit_time || '', description: space.description || '' });
     }
   }
   log(`wiki index: ${index.length} pages`);
@@ -35,18 +35,21 @@ export function rankPages(index, question) {
   return scored.sort((a, b) => b.score - a.score).slice(0, MAX_DOCS);
 }
 
+// A wiki page's whole text, cached 24 h.
+export async function docTextCached(lark, store, token) {
+  const key = `lark:doc:${token}`;
+  const cached = await store.cachedPage(key);
+  if (cached !== null) return cached;
+  const text = await lark.docText(token).catch(() => '');
+  await store.savePage(key, text);
+  return text;
+}
+
 export async function knowledgeFor({ lark, store, question, log = () => {} }) {
   const index = await wikiIndex(lark, store, log);
   if (index.length === 0) return [];
   const picked = rankPages(index, question);
-  const texts = await Promise.all(picked.map(async (p) => {
-    const key = `lark:doc:${p.token}`;
-    const cached = await store.cachedPage(key);
-    if (cached !== null) return cached;
-    const text = (await lark.docText(p.token).catch(() => '')).slice(0, DOC_CHARS);
-    await store.savePage(key, text);
-    return text;
-  }));
+  const texts = await Promise.all(picked.map(async (p) => (await docTextCached(lark, store, p.token)).slice(0, DOC_CHARS)));
   const spaces = [...new Set(index.map((p) => `${p.space}: ${p.description}`))];
   return [
     { title: 'Wiki spaces', text: spaces.join('\n') },

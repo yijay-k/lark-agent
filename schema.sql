@@ -18,3 +18,10 @@ CREATE TABLE IF NOT EXISTS briefings (chat_id TEXT NOT NULL, kind TEXT NOT NULL,
 
 -- Usage counters, e.g. Lark API calls per month (Lark's free plan allows ~10,000 a month).
 CREATE TABLE IF NOT EXISTS counters (key TEXT PRIMARY KEY, n INTEGER NOT NULL);
+
+-- What Eleyna can search (SQLite full-text search, BM25 ranking): calendar events, wiki sections,
+-- groups, pinned messages and group chat messages. DMs are never indexed. Refilled by the cron.
+CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(
+  kind UNINDEXED, ref UNINDEXED, chat_id UNINDEXED, title, body, url UNINDEXED, at UNINDEXED,
+  tokenize = 'porter unicode61'
+);

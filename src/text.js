@@ -27,6 +27,10 @@ export function messageText(messageType, content) {
   return '';
 }
 
+export function formatTime(ts, tz) {
+  return new Date(Number(ts) * 1000).toLocaleString('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
 export function findLinks(text) {
   return [...new Set(String(text || '').match(URL_RE) || [])];
 }

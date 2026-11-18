@@ -24,6 +24,11 @@ LARK_APP_ID = "cli_aa736a5711381e27"
 GEMINI_MODELS = "gemini-3.5-flash-lite,gemini-3.8-flash"
 BACKUP_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 TIMEZONE = "Asia/Kuala_Lumpur"
+# The organisation's Lark web address, for links to wiki pages in answers (they still need a login).
+LARK_WEB = "https://hjp6vqsen38d.jp.larksuite.com"
+# "on" once Lark sends card button taps here (Developer Console → Events & Callbacks → Callback
+# configuration → card.action.trigger, then publish a version). Until then, people reply "yes" to join.
+JOIN_BUTTON = "off"
 # Where usage warnings (75%, 90% of Lark's monthly quota) go: Yi Jay's DM with the bot.
 # New people added to this group get Eleyna's welcome DM (AI Exploration — Team).
 ONBOARDING_CHAT_ID = "oc_2d92c512c406d338c1e2d4a8c5965604"

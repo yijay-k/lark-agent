@@ -95,6 +95,7 @@ You can set `DEBUG_KEY` yourself with `openssl rand -hex 16 | npx wrangler secre
    If the Encrypt Key is empty or a placeholder (e.g. `SECRET_KEY`), have them reset it first.
 2. **Event configuration → request URL:** `<worker URL>/lark/events`. Lark checks it immediately and should say it's verified.
 3. **Add events:** *Message received* (`im.message.receive_v1`), *User added to group* (`im.chat.member.user.added_v1`), *User enters chat with bot* (`im.chat.access_event.bot_p2p_chat_entered_v1`).
+4. **Callback configuration** (the Join button): send callbacks to the same `<worker URL>/lark/events` and add *card.action.trigger*. Then set `JOIN_BUTTON = "on"` in `wrangler.toml` and redeploy. Until then people join by replying "yes".
 
 *Check:* run `npx wrangler tail` while they save the URL. A "Decryption failed" line means the Encrypt Key secret doesn't match Lark's.
 
@@ -112,6 +113,7 @@ Put both in `wrangler.toml` and run `npx wrangler deploy` again.
 
 **10. Test.**
 - In a group, the person writes `@<bot name> what can you do?` and should get an answer within about 10 s.
+- Fill the search index: `curl -s -X POST <worker URL>/debug/reindex -H "x-debug-key: <DEBUG_KEY>"`. Repeat while `wiki.left` is above 0 (8 pages per run, Cloudflare's free plan allows 50 outside calls per run).
 - `curl -s -X POST <worker URL>/debug/usage -H "x-debug-key: <DEBUG_KEY>"` returns usage numbers.
 - A welcome preview, which sends nothing: `curl -s -X POST <worker URL>/debug/onboard -H "x-debug-key: <DEBUG_KEY>" -H 'content-type: application/json' -d '{"name":"Test"}'`.
 

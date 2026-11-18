@@ -7,30 +7,10 @@ import { readLarkBody } from '../src/index.js';
 import { onMessage } from '../src/handlers.js';
 import { syncMembers, runCron } from '../src/cron.js';
 import { think } from '../src/brain.js';
+import { fakeStore } from './fakes.js';
 
 const BOT = 'ou_bot';
 const ME = 'ou_me';
-
-function fakeStore() {
-  const messages = [];
-  const briefings = new Set();
-  const seen = new Set();
-  return {
-    messages,
-    briefings,
-    firstTime: async (id) => (seen.has(id) ? false : (seen.add(id), true)),
-    saveMessage: async (m) => { messages.push({ ...m, chat_id: m.chatId, sender_name: m.senderName, created_at: m.createdAt }); },
-    recentMessages: async (chatId) => messages.filter((m) => m.chatId === chatId),
-    cachedPage: async () => null,
-    savePage: async () => {},
-    briefed: async (c, k) => briefings.has(`${c}|${k}`),
-    markBriefed: async (c, k) => { briefings.add(`${c}|${k}`); },
-    unmarkBriefed: async (c, k) => { briefings.delete(`${c}|${k}`); },
-    kvGet: async () => undefined,
-    kvSet: async () => {},
-    bump: async () => {},
-  };
-}
 
 function fakeLark({ attendees = {}, members = [{ member_id: ME, name: 'Yi Koh' }], description = 'Day 1 · event:EV1 event:EV2', start = '1796169600' } = {}) {
   const calls = [];

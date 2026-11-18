@@ -10,7 +10,8 @@ She runs 24/7 on **Cloudflare Workers' free plan** with **Gemini's free tier**, 
 ## What she does
 
 - **Every group gets its own assistant.** Mention `@Eleyna` and she answers from *that group only*: its description, pinned messages, calendar events, the pages they link to and the recent chat. One group never sees another.
-- **DMs are a general chat with the club.** She answers from the AI Exploration wiki and the club handbook.
+- **DMs know the whole club.** She searches one index of every calendar event, the wiki, the groups and their pinned notes, so "anything on Thursday?" or "Qwen conference timeline?" is answered from the source, with the event's own page read for details.
+- **Join from a DM.** Everyone may know every event, but a group's chat is for its members. Ask about a group you're not in and she says it exists, shares the event's details and offers to add you: tap **Join** (or reply *yes*) and she adds you and DMs you its details. `/clear` forgets your DM history.
 - **Research by reading.** For "who are the speakers, should I go?" she opens more of the event's official site (agenda, speakers) and gives a short verdict.
 - **Onboarding.** Anyone added to the team group gets a welcome DM from her first: what the club is, what to read, Lark tips and questions to try.
 - **Event groups.** She adds people who accept an event's invite to its group, and posts a one-time "💡 Good to know" note (parking, entrance, food, what to bring) and a "🔔 Tomorrow" reminder.
@@ -62,14 +63,16 @@ Nothing can be billed: neither Cloudflare nor Google has a card on file, and fre
 | `src/index.js` | The webhook, the locked test routes and the cron entry point |
 | `src/handlers.js` | Group messages, DMs and deciding when to answer |
 | `src/context.js` | Builds one chat's context: description, pins, events, linked pages, recent chat |
-| `src/knowledge.js` | Indexes the club wiki and picks the pages relevant to a question |
+| `src/knowledge.js` | Lists the club wiki's pages; the fallback when search finds nothing |
+| `src/search.js` | The search index (D1 full-text, BM25): events, wiki, groups, pins, group chat; who may see what |
+| `src/join.js` | Join offers, adding someone to a group, the Join card and the details sent after |
 | `src/brain.js` | Gemini in order, then Workers AI, inside the time budget |
 | `src/prompts.js` | What she's told: scope, rules, research mode, DMs, briefings |
 | `src/roast.js` | Rotating out-of-scope endings and jabs |
 | `src/handbook.js` | What she says about the club, and the welcome DM (owner-only) |
 | `src/onboard.js` | Sends the welcome once per person; a failed send stays retryable |
 | `src/usage.js` | The usage report and the 75% and 90% alerts |
-| `src/cron.js` | Auto-join and briefings |
+| `src/cron.js` | Refreshes the search index, auto-join and briefings |
 | `src/lark.js`, `src/crypto.js`, `src/store.js`, `src/text.js` | The Lark API (with caching and call counting), webhook crypto, D1 storage and text helpers |
 | `schema.sql` | D1 tables |
 | `test/bot.test.js` | Offline tests (`npm test`): no network, no keys |
@@ -100,10 +103,12 @@ You never paste a secret into the chat: the agent gives you `npx wrangler secret
    - **Events & Callbacks:**
      - set the request URL to `https://lark-event-bot.<you>.workers.dev/lark/events`;
      - copy the Encrypt Key and Verification Token into the secrets;
-     - add the events *Message received*, *User added to group* and *User enters chat with bot*.
+     - add the events *Message received*, *User added to group* and *User enters chat with bot*;
+     - **Callback configuration:** send callbacks to the same URL and add *card.action.trigger* (the Join button), then set `JOIN_BUTTON = "on"` in `wrangler.toml`.
    - **Availability:** include everyone she should talk to, or Lark refuses with `230013`.
    - Create and publish a version.
-7. In any group with the bot, write `@Eleyna what can you do?`
+7. Fill the search index once: `curl -s -X POST https://lark-event-bot.<you>.workers.dev/debug/reindex -H "x-debug-key: <DEBUG_KEY>"` (run it again while it reports wiki pages `left`; the cron keeps it fresh after that).
+8. In any group with the bot, write `@Eleyna what can you do?`
 
 Logs: `npx wrangler tail`. Tests: `npm test`.
 

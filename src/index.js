@@ -1,4 +1,4 @@
-// Cloudflare Worker entry: Lark webhook (POST /lark/events) and the 10-minute cron.
+// Cloudflare Worker entry: Lark webhook and card callbacks (POST /lark/events) and the 6-hourly cron.
 
 import { decryptLark, signatureOk } from './crypto.js';
 import { createLark, usageKey } from './lark.js';
@@ -6,6 +6,25 @@ import { createStore } from './store.js';
 import { onMessage, answerQuestion, answerDirect } from './handlers.js';
 import { runCron } from './cron.js';
 import { onMembersAdded, onChatEntered, welcomeText, welcomeOnce } from './onboard.js';
+import { refreshIndex } from './search.js';
+import { joinGroup } from './join.js';
+
+// A Join button was tapped (Lark's card.action.trigger callback). Lark waits at most 3 s for the
+// toast, so only the join itself happens now; the details follow as a DM.
+async function onJoinTapped({ env, body, ctx }) {
+  let value = body.event?.action?.value || {};
+  if (typeof value === 'string') { try { value = JSON.parse(value); } catch { value = {}; } }
+  const userId = body.event?.operator?.open_id;
+  if (value.action !== 'join' || !value.chat_id || !userId) return json({});
+  const store = createStore(env.DB);
+  const lark = createLark(env, fetch, store);
+  if (body.header?.event_id && !(await store.firstTime(body.header.event_id))) return json({});
+  const res = await joinGroup({ lark, store, userId, chatId: value.chat_id });
+  const dm = res.ok ? (res.already ? `You're already in **${res.name}**.\n\n${res.details}` : res.details) : res.error;
+  ctx.waitUntil(lark.sendPostToUser(userId, '', dm).catch((err) => console.log(`join details failed: ${err.message}`)));
+  const toast = res.ok ? (res.already ? `You're already in ${res.name}` : `Added you to ${res.name}`) : "Couldn't add you: see my message";
+  return json({ toast: { type: res.ok ? 'success' : 'error', content: toast } });
+}
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -62,6 +81,14 @@ export default {
         return json({ text, sent: false, error: err.message, logs }, 502);
       }
     }
+    // Fills the search index now (the cron does it every 6 hours). Run again while wiki pages are left.
+    if (request.method === 'POST' && url.pathname === '/debug/reindex') {
+      if (!env.DEBUG_KEY || request.headers.get('x-debug-key') !== env.DEBUG_KEY) return new Response('Not found', { status: 404 });
+      const logs = [];
+      const store = createStore(env.DB);
+      const stats = await refreshIndex({ env, lark: createLark(env, fetch, store), store, log: (l) => logs.push(l) });
+      return json({ stats, logs });
+    }
     if (request.method === 'POST' && url.pathname === '/debug/usage') {
       if (!env.DEBUG_KEY || request.headers.get('x-debug-key') !== env.DEBUG_KEY) return new Response('Not found', { status: 404 });
       const key = usageKey();
@@ -87,6 +114,7 @@ export default {
 
     const eventType = body.header?.event_type;
     const eventId = body.header?.event_id;
+    if (eventType === 'card.action.trigger') return onJoinTapped({ env, body, ctx });
     if (eventType === 'im.chat.access_event.bot_p2p_chat_entered_v1' && eventId) {
       const store = createStore(env.DB);
       const lark = createLark(env, fetch, store);
