@@ -10,6 +10,7 @@ import { groupContext, personContext, contextText } from './context.js';
 import { answerSystem, answerPrompt, researchAddon, dmSystem, foundClubItems } from './prompts.js';
 import { isClubMatch } from './search.js';
 import { maybeFold, forgetChat, memoryReport } from './memory.js';
+import { isOwner, startAdd, answerAdd, asksToAddSomeone, NOT_OWNER } from './admin.js';
 import { isYes, wantsToJoin, pendingOffer, saveOffer, dropOffer, offerHint, answerCard, joinGroup } from './join.js';
 import { think } from './brain.js';
 
@@ -50,6 +51,12 @@ export async function onMessage({ env, lark, store, event, log = console.log, fe
 
   // Searchable later, but only by this group's members (see search.js).
   await store.indexAdd('chat', msg.message_id, { chatId: msg.chat_id, body: text, at: Number(msg.create_time || Date.now()) }).catch((err) => log(`index chat: ${err.message}`));
+  // The owner's answer to "add Kai to this group?" counts without an @mention.
+  const owner = isOwner(env, senderId);
+  if (owner) {
+    const reply = await answerAdd({ lark, store, chatId: msg.chat_id, text, isYes, log });
+    if (reply) return replyAndRemember({ lark, store, msg, text: reply, result: 'admin' });
+  }
   const botId = env.BOT_OPEN_ID || (await lark.botOpenId());
   if (!isBotMentioned(msg.mentions, botId)) {
     log(`saved in ${msg.chat_id} (not addressed to the bot)`);
@@ -64,6 +71,9 @@ export async function onMessage({ env, lark, store, event, log = console.log, fe
     await lark.replyPost(msg.message_id, '', usageReport(await usageNumbers(store)));
     return 'usage';
   }
+  // "add kai here": handled in code (owner only), never by the AI.
+  const adding = owner ? await startAdd({ lark, store, chatId: msg.chat_id, isGroup: true, text }) : (await asksToAddSomeone(lark, text)) ? NOT_OWNER : null;
+  if (adding) return replyAndRemember({ lark, store, msg, text: adding, result: 'admin' });
   // Lark has no "typing…" for bots: an emoji on the question shows it's being worked on.
   await lark.react(msg.message_id, 'OnIt').catch((err) => log(`react failed: ${err.message}`));
   const members = await lark.chatMembers(msg.chat_id).catch(() => []);
@@ -87,6 +97,11 @@ export async function answerQuestion({ env, lark, store, chatId, question, asker
   const answer = await think(env, system, answerPrompt(contextText(ctx), question, asker), log, fetchImpl, { search: research, startedAt });
   log(`answer via ${answer.via}: ${Date.now() - t0} ms total`);
   return answer;
+}
+
+async function replyAndRemember({ lark, store, msg, text, result }) {
+  await rememberReply(store, msg.chat_id, await lark.replyPost(msg.message_id, '', text), text);
+  return result;
 }
 
 // Her own replies are kept too, so a follow-up ("that's not it") makes sense. Never searchable.
@@ -126,6 +141,13 @@ async function onDirectMessage({ env, lark, store, msg, sender, text, log, fetch
   // A plain "hi" needs nothing more; a real question still gets its answer after the welcome.
   const welcomedNow = await welcomeOnce({ lark, store, openId: userId, log }).catch((err) => (log(`welcome failed: ${err.message}`), false));
   if (welcomedNow && JUST_A_GREETING.test(text.trim())) return 'welcomed';
+  // The owner adding other people: an answer to "add them?" first, then a new request.
+  if (isOwner(env, userId)) {
+    const reply = (await answerAdd({ lark, store, chatId: msg.chat_id, text, isYes, log })) || (await startAdd({ lark, store, chatId: msg.chat_id, isGroup: false, text }));
+    if (reply) return replyAndRemember({ lark, store, msg, text: reply, result: 'admin' });
+  } else if (await asksToAddSomeone(lark, text)) {
+    return replyAndRemember({ lark, store, msg, text: NOT_OWNER, result: 'admin' });
+  }
   // "yes" to the group she just offered.
   const pending = await pendingOffer(store, msg.chat_id);
   if (pending.length && isYes(text)) return joinAndReply({ env, lark, store, msg, userId, offers: pending, log });
@@ -150,7 +172,7 @@ async function onDirectMessage({ env, lark, store, msg, sender, text, log, fetch
   }
   await rememberReply(store, msg.chat_id, res, reply);
   await recordAnswer(store, answer);
-  log(`answered DM ${msg.chat_id} via ${answer.via}, ${answer.tokens} tokens, ${answer.found} found, ${answer.offers.length} offers`);
+  log(`answered DM ${msg.chat_id} from ${userId} via ${answer.via}, ${answer.tokens} tokens, ${answer.found} found, ${answer.offers.length} offers`);
   return 'answered';
 }
 

@@ -120,6 +120,7 @@ Put both in `wrangler.toml` and run `npx wrangler deploy` again.
 
 **10. Test.**
 - In a group, the person writes `@<bot name> what can you do?` and should get an answer within about 10 s.
+- Make the person the owner (only they can add other people to groups): their open_id (`ou_…`) shows in the log line `answered DM oc_… from ou_…` when they DM the bot (`npx wrangler tail`). Ask them to paste it themselves: `npx wrangler secret put OWNER_OPEN_IDS` (several: comma-separated).
 - Fill the search index: `curl -s -X POST <worker URL>/debug/reindex -H "x-debug-key: <DEBUG_KEY>"`. Repeat while `wiki.left` is above 0 (8 pages per run, Cloudflare's free plan allows 50 outside calls per run).
 - `curl -s -X POST <worker URL>/debug/usage -H "x-debug-key: <DEBUG_KEY>"` returns usage numbers.
 - Update one chat's memory now and see it: `curl -s -X POST <worker URL>/debug/memory -H "x-debug-key: <DEBUG_KEY>" -H 'content-type: application/json' -d '{"chatId":"oc_…"}'`. Normally it's automatic (every 15 messages, and the cron).

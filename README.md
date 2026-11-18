@@ -12,6 +12,7 @@ She runs 24/7 on **Cloudflare Workers' free plan** with **Gemini's free tier**, 
 - **Every group gets its own assistant.** Mention `@Eleyna` and she answers from *that group only*: its description, pinned messages, calendar events, the pages they link to and the recent chat. One group never sees another.
 - **DMs know the whole club.** She searches one index of every calendar event, the wiki, the groups and their pinned notes, so "anything on Thursday?" or "Qwen conference timeline?" is answered from the source, with the event's own page read for details.
 - **Join from a DM.** Everyone may know every event, but a group's chat is for its members. Ask about a group you're not in and she says it exists, shares the event's details and offers to add you: tap **Join** (or reply *yes*) and she adds you and DMs you its details. `/clear` forgets your DM history and memory.
+- **The owner adds people.** "@Eleyna add kai here" in a group, or "add kai and chelsea to the qwen group" in a DM: names are matched in code to people in her groups (any order, with or without spaces, by first name), she asks you to confirm, or to pick by number when several match, then adds them. Only the owner (`OWNER_OPEN_IDS`) can; she tells anyone else so, and never pretends she can do it herself.
 - **Research by reading.** For "who are the speakers, should I go?" she opens more of the event's official site (agenda, speakers) and gives a short verdict.
 - **Onboarding.** Anyone added to the team group gets a welcome DM from her first: what the club is, what to read, Lark tips and questions to try.
 - **Event groups.** She adds people who accept an event's invite to its group, and posts a one-time "💡 Good to know" note (parking, entrance, food, what to bring) and a "🔔 Tomorrow" reminder.
@@ -131,6 +132,7 @@ Nothing can be billed: neither Cloudflare nor Google has a card on file, and fre
 | `src/search.js` | The search index (D1 full-text, BM25): events, wiki, groups, pins, group chat; who may see what |
 | `src/memory.js` | Long-term memory per chat (the Mem0 method): writing, updating and recalling facts |
 | `src/embed.js` | Embeddings (Workers AI) and the Vectorize index |
+| `src/admin.js` | The owner adding people: reading the request, matching names, confirming, adding |
 | `src/join.js` | Join offers, adding someone to a group, the Join card and the details sent after |
 | `src/brain.js` | Gemini in order, then Workers AI, inside the time budget |
 | `src/prompts.js` | What she's told: scope, rules, research mode, DMs, briefings |
