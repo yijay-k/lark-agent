@@ -3,7 +3,7 @@
 
 import { usageKey } from './lark.js';
 
-export const LARK_MONTHLY_LIMIT = 10_000;
+const LARK_MONTHLY_LIMIT = 10_000;
 const ALERT_LEVELS = [75, 90];
 
 const month = (d = new Date()) => d.toISOString().slice(0, 7);

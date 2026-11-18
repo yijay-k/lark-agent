@@ -12,7 +12,7 @@ const JOIN_RE = /\b(add me|let me in|invite me|put me in)\b/i;
 
 export const isYes = (text) => String(text || '').trim().length <= 40 && YES_RE.test(String(text || '').trim());
 export const wantsToJoin = (text) => JOIN_RE.test(String(text || ''));
-export const chatLink = (chatId) => `https://applink.larksuite.com/client/chat/open?openChatId=${encodeURIComponent(chatId)}`;
+const chatLink = (chatId) => `https://applink.larksuite.com/client/chat/open?openChatId=${encodeURIComponent(chatId)}`;
 const offerKey = (dmChatId) => `join-offer:${dmChatId}`;
 
 // Groups the owner keeps closed (CLOSED_GROUPS in wrangler.toml): never offered, never joined.
@@ -55,7 +55,7 @@ export function answerCard(markdown, offers) {
 }
 
 // What a new member gets right after joining: the group's events from the index, and a link to open it.
-export async function groupDetails({ store, group }) {
+async function groupDetails({ store, group }) {
   const events = (await store.indexList('event').catch(() => [])).filter((e) => e.chat_id === group.chat_id);
   const about = String(group.description || '').replace(/event:[A-Za-z0-9_-]+/g, '').trim();
   const lines = [`You're in **${group.name}** now 🎉 [Open the group](${chatLink(group.chat_id)})`];

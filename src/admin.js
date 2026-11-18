@@ -52,7 +52,7 @@ export function nameScore(query, name) {
 }
 
 // Everyone in Eleyna's groups (the club's people), with a name. Member lists are cached for hours.
-export async function knownPeople(lark, groups) {
+async function knownPeople(lark, groups) {
   const people = new Map();
   for (const g of groups) {
     for (const m of await lark.chatMembers(g.chat_id).catch(() => [])) if (m.member_id && m.name) people.set(m.member_id, { id: m.member_id, name: m.name });

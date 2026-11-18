@@ -1,7 +1,7 @@
 // How an out-of-scope roast ends. The model never sees its own past replies, so variety
 // comes from here: a weighted pick that avoids the styles this chat saw most recently.
 
-export const ENDINGS = Object.freeze({
+const ENDINGS = Object.freeze({
   chatgpt: { weight: 3, rule: 'End by sending them to ChatGPT.', samples: ['ChatGPT exists. Use it.', "That's a ChatGPT problem.", 'Take it up with ChatGPT.', 'ChatGPT is one tab away.', 'Ask ChatGPT, it lives for this.', 'Go bother ChatGPT.'] },
   diy: { weight: 3, rule: 'Do NOT mention ChatGPT or any tool. End by telling them to deal with it themselves.', samples: ['Figure it out, you have hands.', 'Google is free. Go.', 'Sounds like a you problem.', 'Good luck with that.', 'You got this. Alone.', 'Deal with it, champ.'] },
   mic: { weight: 2, rule: 'Do NOT mention ChatGPT or any tool. End on the roast itself, no redirect at all.', samples: [] },

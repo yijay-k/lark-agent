@@ -30,7 +30,7 @@ const RRF_K = 60;
 const VECTOR_MIN = 0.5;
 const VECTOR_STRONG = 0.62;
 const CANDIDATES = 30;
-export const PUBLIC_KINDS = Object.freeze(new Set(['event', 'doc', 'group']));
+const PUBLIC_KINDS = Object.freeze(new Set(['event', 'doc', 'group']));
 // Chat filler that would match half the index.
 const SEARCH_STOPWORDS = new Set('like want know need yeah yes okay thats not but under also than then more still really gonna wanna show here which would could anything something thing things'.split(' '));
 

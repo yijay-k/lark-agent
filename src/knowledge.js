@@ -38,7 +38,7 @@ export function rankPages(index, question) {
 }
 
 // A wiki page's whole text, cached 24 h.
-export async function docTextCached(lark, store, token) {
+async function docTextCached(lark, store, token) {
   const key = `lark:doc:${token}`;
   const cached = await store.cachedPage(key);
   if (cached !== null) return cached;
