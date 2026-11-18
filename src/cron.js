@@ -1,5 +1,6 @@
-// Every 6 hours (the cron in wrangler.toml): refresh the search index, add people who accepted any of a group's events, and post the
-// group's "Good to know" note once, plus a reminder the day before.
+// Every 6 hours (the cron in wrangler.toml), in order of importance: add people who accepted any of a
+// group's events and post its "Good to know" note (once) and the reminder the day before; refresh the
+// search index; retry failed memory vectors; catch up memory for quiet chats; prune old rows.
 
 import { eventIdsFromDescription } from './text.js';
 import { groupContext, contextText } from './context.js';
@@ -8,6 +9,7 @@ import { think } from './brain.js';
 import { today } from './handlers.js';
 import { checkAlerts } from './usage.js';
 import { refreshIndex } from './search.js';
+import { foldChat, chatMemory, retryPendingVectors } from './memory.js';
 
 const DAY_S = 86400;
 
@@ -37,10 +39,30 @@ async function brief({ env, lark, store, chatId, kind, log, fetchImpl }) {
   log(`briefing ${kind} in ${chatId} via ${via}`);
 }
 
-export async function runCron({ env, lark, store, log = console.log, fetchImpl = fetch, now = Date.now() }) {
+const QUIET_MS = 30 * 60 * 1000;
+const LOOK_BACK_MS = 7 * DAY_S * 1000;
+const FOLDS_PER_RUN = 3;
+// Each fold makes 1–3 outside calls; memory stops for this run past this many (50 is the free limit).
+const CALLS_BEFORE_MEMORY_STOPS = 40;
+
+// Quiet chats with messages memory hasn't taken in (fewer than the 15 that trigger it at once).
+export async function catchUpMemory({ env, lark, store, log = () => {}, fetchImpl = fetch, now = Date.now() }) {
+  if (!(env.GEMINI_API_KEY || env.AI)) return 0;
+  const groups = new Set((await lark.listChats()).map((g) => g.chat_id));
+  let done = 0;
+  for (const { chat_id: chatId, last, seq } of await store.activeChats(now - LOOK_BACK_MS)) {
+    if (done >= FOLDS_PER_RUN || (lark.callsMade && lark.callsMade() + done * 2 > CALLS_BEFORE_MEMORY_STOPS)) break;
+    if (now - Number(last) < QUIET_MS || Number(seq) <= (await chatMemory(store, chatId)).cursor) continue;
+    const result = await foldChat({ env, lark, store, chatId, isPrivate: !groups.has(chatId), today: today(env.TIMEZONE || 'Asia/Kuala_Lumpur'), log, fetchImpl, now })
+      .catch((err) => (log(`memory ${chatId}: ${err.message}`), null));
+    if (result) done += 1;
+  }
+  return done;
+}
+
+// Event groups: add people who accepted, post the notes. Done first: it's the cron's main job.
+async function runEventGroups({ env, lark, store, log, fetchImpl, now }) {
   const tz = env.TIMEZONE || 'Asia/Kuala_Lumpur';
-  await checkAlerts({ env, lark, store, log }).catch((err) => log(`alerts: ${err.message}`));
-  await refreshIndex({ env, lark, store, log, now }).catch((err) => log(`index: ${err.message}`));
   const groups = (await lark.listChats()).filter((c) => eventIdsFromDescription(c.description).length > 0);
   if (groups.length === 0) return;
   const calendarId = await lark.primaryCalendarId();
@@ -69,4 +91,15 @@ export async function runCron({ env, lark, store, log = console.log, fetchImpl =
       log(`cron: group ${group.chat_id} failed: ${err.message}`);
     }
   }
+}
+
+// In order of importance, so the outside-call limit runs out on the least important step.
+export async function runCron({ env, lark, store, log = console.log, fetchImpl = fetch, now = Date.now() }) {
+  const step = (name, fn) => fn().catch((err) => log(`${name}: ${err.message}`));
+  await step('alerts', () => checkAlerts({ env, lark, store, log }));
+  await step('event groups', () => runEventGroups({ env, lark, store, log, fetchImpl, now }));
+  await step('index', () => refreshIndex({ env, lark, store, log, now }));
+  await step('vectors', () => retryPendingVectors({ env, store, log }));
+  await step('memory', () => catchUpMemory({ env, lark, store, log, fetchImpl, now }));
+  await step('prune', async () => store.prune(now, (await lark.listChats()).map((g) => g.chat_id)));
 }

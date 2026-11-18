@@ -1,29 +1,24 @@
 // Cloudflare Worker entry: Lark webhook and card callbacks (POST /lark/events) and the 6-hourly cron.
 
 import { decryptLark, signatureOk } from './crypto.js';
-import { createLark, usageKey } from './lark.js';
+import { createLark } from './lark.js';
 import { createStore } from './store.js';
-import { onMessage, answerQuestion, answerDirect } from './handlers.js';
+import { onMessage, answerQuestion, answerDirect, today } from './handlers.js';
+import { foldChat, memoryReport } from './memory.js';
 import { runCron } from './cron.js';
 import { onMembersAdded, onChatEntered, welcomeText, welcomeOnce } from './onboard.js';
 import { refreshIndex } from './search.js';
-import { joinGroup } from './join.js';
+import { joinFromTap } from './join.js';
 
-// A Join button was tapped (Lark's card.action.trigger callback). Lark waits at most 3 s for the
-// toast, so only the join itself happens now; the details follow as a DM.
+// A Join button was tapped. Lark waits at most 3 s for the toast, so only the join happens now;
+// the details follow as a DM.
 async function onJoinTapped({ env, body, ctx }) {
-  let value = body.event?.action?.value || {};
-  if (typeof value === 'string') { try { value = JSON.parse(value); } catch { value = {}; } }
-  const userId = body.event?.operator?.open_id;
-  if (value.action !== 'join' || !value.chat_id || !userId) return json({});
   const store = createStore(env.DB);
   const lark = createLark(env, fetch, store);
-  if (body.header?.event_id && !(await store.firstTime(body.header.event_id))) return json({});
-  const res = await joinGroup({ lark, store, userId, chatId: value.chat_id });
-  const dm = res.ok ? (res.already ? `You're already in **${res.name}**.\n\n${res.details}` : res.details) : res.error;
-  ctx.waitUntil(lark.sendPostToUser(userId, '', dm).catch((err) => console.log(`join details failed: ${err.message}`)));
-  const toast = res.ok ? (res.already ? `You're already in ${res.name}` : `Added you to ${res.name}`) : "Couldn't add you: see my message";
-  return json({ toast: { type: res.ok ? 'success' : 'error', content: toast } });
+  const out = await joinFromTap({ env, lark, store, body, log: console.log });
+  if (!out) return json({});
+  ctx.waitUntil(lark.sendPostToUser(out.userId, '', out.dm).catch((err) => console.log(`join details failed: ${err.message}`)));
+  return json({ toast: out.toast });
 }
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -89,9 +84,19 @@ export default {
       const stats = await refreshIndex({ env, lark: createLark(env, fetch, store), store, log: (l) => logs.push(l) });
       return json({ stats, logs });
     }
+    // Updates one chat's memory now and shows it (the owner's check; normally automatic).
+    if (request.method === 'POST' && url.pathname === '/debug/memory') {
+      if (!env.DEBUG_KEY || request.headers.get('x-debug-key') !== env.DEBUG_KEY) return new Response('Not found', { status: 404 });
+      const { chatId } = await request.json();
+      const logs = [];
+      const store = createStore(env.DB);
+      const lark = createLark(env, fetch, store);
+      const isPrivate = !(await lark.listChats()).some((g) => g.chat_id === chatId);
+      const result = await foldChat({ env, lark, store, chatId, isPrivate, today: today(env.TIMEZONE || 'Asia/Kuala_Lumpur'), log: (l) => logs.push(l) }).catch((err) => ({ error: err.message }));
+      return json({ result, report: await memoryReport(store, chatId), logs });
+    }
     if (request.method === 'POST' && url.pathname === '/debug/usage') {
       if (!env.DEBUG_KEY || request.headers.get('x-debug-key') !== env.DEBUG_KEY) return new Response('Not found', { status: 404 });
-      const key = usageKey();
       const { usageNumbers, usageReport } = await import('./usage.js');
       const u = await usageNumbers(createStore(env.DB));
       return json({ ...u, report: usageReport(u) });

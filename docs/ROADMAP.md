@@ -10,6 +10,7 @@ Eleyna is AI Exploration's **secretary, HR and onboarding guide**: she knows the
 | **Events**: event groups, pinned cards, reminders, auto-join on Accept | ✅ live |
 | **Group assistant**: every group, its own context only; summaries, shared links, announcements; cocky refusals for anything off-topic | ✅ live |
 | **Knowledge**: the club wiki in DMs, plus the Handbook's "AI Exploration in one minute" | ✅ live |
+| **Memory**: each chat keeps small facts (the Mem0 method), updated every 15 messages; `/memory` shows them | ✅ live |
 | **Search & join**: DMs search every event, wiki section, group and (for members) its chat; she offers groups you're not in and adds you on Join / "yes" | ✅ live (Join button after the callback is set) |
 | **Onboarding**: anyone added to *AI Exploration — Team* gets a clean welcome DM (start-here reading list: Introduction & Our Mission, Core Philosophy, Hub, Project 001; good-to-know: calendar invites, @Eleyna, say hi to EJ; example questions) and can keep asking her | ✅ built; Eleyna speaks first (added to the team group, opens her DM, or first DM). Needs the Lark events "User added to group" and "User enters chat with bot", and the app's availability set to all members |
 | **Advisor**: "What should AI Exploration do next?" grounded in the wiki and recent chats | next |

@@ -2,8 +2,8 @@ name = "lark-event-bot"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 
-# Every 6 hours: add people who accepted, post "Good to know" notes. (Kept rare: Lark's free
-# plan allows ~10,000 API calls a month for the whole organisation.)
+# Every 6 hours: add people who accepted, post "Good to know" notes, refresh the search index, catch
+# up memory. (Kept rare: Lark's free plan allows ~10,000 API calls a month for the whole organisation.)
 [triggers]
 crons = ["0 */6 * * *"]
 
@@ -11,7 +11,14 @@ crons = ["0 */6 * * *"]
 [ai]
 binding = "AI"
 
-# The bot's memory. database_id is filled in by `npx wrangler d1 create lark-event-bot`.
+# Meaning search: memory facts, wiki sections, events and groups as embeddings (1024 numbers each,
+# from EMBED_MODEL). Free plan: 5M stored numbers, about 4,900 items. Created in AGENTS.md step 4.
+[[vectorize]]
+binding = "VECTORS"
+index_name = "eleyna-memory"
+
+# The bot's database: messages, memory, the keyword index, caches. database_id is filled in by
+# `npx wrangler d1 create lark-event-bot`.
 [[d1_databases]]
 binding = "DB"
 database_name = "lark-event-bot"
@@ -23,18 +30,25 @@ LARK_APP_ID = "cli_aa736a5711381e27"
 # Tried in order; Lite first because it is fast and has the most free quota.
 GEMINI_MODELS = "gemini-3.5-flash-lite,gemini-3.8-flash"
 BACKUP_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+# Writing memory: the stronger model first (it's rare, and quality matters more than speed).
+MEMORY_MODELS = "gemini-3.8-flash,gemini-3.5-flash-lite"
+# Multilingual (English, Malay, Chinese), 1024 numbers per text: must match the Vectorize index.
+EMBED_MODEL = "@cf/baai/bge-m3"
 TIMEZONE = "Asia/Kuala_Lumpur"
 # The organisation's Lark web address, for links to wiki pages in answers (they still need a login).
 LARK_WEB = "https://hjp6vqsen38d.jp.larksuite.com"
 # "on" once Lark sends card button taps here (Developer Console → Events & Callbacks → Callback
 # configuration → card.action.trigger, then publish a version). Until then, people reply "yes" to join.
 JOIN_BUTTON = "off"
-# Where usage warnings (75%, 90% of Lark's monthly quota) go: Yi Jay's DM with the bot.
+# Groups Eleyna never offers or adds people to (comma-separated chat ids). Empty: every group the
+# bot is in is open to anyone in the workspace who asks.
+CLOSED_GROUPS = ""
 # New people added to this group get Eleyna's welcome DM (AI Exploration — Team).
 ONBOARDING_CHAT_ID = "oc_2d92c512c406d338c1e2d4a8c5965604"
+# Where usage warnings (75%, 90% of Lark's monthly quota) go: Yi Jay's DM with the bot.
 ALERT_CHAT_ID = "oc_66af2472e698ba80919950b45e0117ea"
 
-# Secrets (never in this file): LARK_APP_SECRET, LARK_ENCRYPT_KEY, LARK_VERIFICATION_TOKEN, GEMINI_API_KEY
+# Secrets (never in this file): LARK_APP_SECRET, LARK_ENCRYPT_KEY, LARK_VERIFICATION_TOKEN, GEMINI_API_KEY, DEBUG_KEY
 # Set each with: npx wrangler secret put <NAME>
 
 [observability]

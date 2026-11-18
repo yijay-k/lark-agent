@@ -71,10 +71,17 @@ Show the person the new `WELCOME` before moving on.
 **4. Database and config.**
 - Run `npx wrangler d1 create lark-event-bot` and put the printed `database_id` in `wrangler.toml`.
 - Run `npx wrangler d1 execute lark-event-bot --remote --file schema.sql`.
-- In `wrangler.toml`, set `LARK_DOMAIN`, `LARK_APP_ID` and `TIMEZONE`.
+- Create the meaning-search index and its two filters, **before** the first deploy (Vectorize only filters vectors added after a filter exists):
+  ```
+  npx wrangler vectorize create eleyna-memory --dimensions=1024 --metric=cosine
+  npx wrangler vectorize create-metadata-index eleyna-memory --propertyName=chat_id --type=string
+  npx wrangler vectorize create-metadata-index eleyna-memory --propertyName=kind --type=string
+  ```
+  1024 matches `EMBED_MODEL` (`@cf/baai/bge-m3`); a different model needs an index of its own size.
+- In `wrangler.toml`, set `LARK_DOMAIN`, `LARK_APP_ID`, `TIMEZONE` and `LARK_WEB` (the workspace's web address, for wiki links).
 - Leave `ONBOARDING_CHAT_ID` and `ALERT_CHAT_ID` as they are until step 9. The values in the file belong to the original club, so they do nothing in another workspace.
 
-*Check:* `npx wrangler d1 execute lark-event-bot --remote --command "select name from sqlite_master"` lists `messages`, `pages`, `counters` and the rest.
+*Check:* `npx wrangler d1 execute lark-event-bot --remote --command "select name from sqlite_master"` lists `messages`, `pages`, `counters`, `search`, `memories` and the rest, and `npx wrangler vectorize list-metadata-index eleyna-memory` lists `chat_id` and `kind`.
 
 **5. Secrets.** The person runs these in their terminal, pasting each value when asked:
 ```
@@ -115,6 +122,7 @@ Put both in `wrangler.toml` and run `npx wrangler deploy` again.
 - In a group, the person writes `@<bot name> what can you do?` and should get an answer within about 10 s.
 - Fill the search index: `curl -s -X POST <worker URL>/debug/reindex -H "x-debug-key: <DEBUG_KEY>"`. Repeat while `wiki.left` is above 0 (8 pages per run, Cloudflare's free plan allows 50 outside calls per run).
 - `curl -s -X POST <worker URL>/debug/usage -H "x-debug-key: <DEBUG_KEY>"` returns usage numbers.
+- Update one chat's memory now and see it: `curl -s -X POST <worker URL>/debug/memory -H "x-debug-key: <DEBUG_KEY>" -H 'content-type: application/json' -d '{"chatId":"oc_…"}'`. Normally it's automatic (every 15 messages, and the cron).
 - A welcome preview, which sends nothing: `curl -s -X POST <worker URL>/debug/onboard -H "x-debug-key: <DEBUG_KEY>" -H 'content-type: application/json' -d '{"name":"Test"}'`.
 
 Done. Tell the person what works and anything left over.

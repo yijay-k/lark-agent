@@ -4,6 +4,9 @@
 // Lark's free plan allows about 10,000 API calls a month for the whole organisation.
 
 const TOKEN_MARGIN_S = 300;
+// A slow Lark call must never use up a message's ~30 s; and member lists are read in pages.
+const CALL_TIMEOUT_MS = 8000;
+const MEMBER_PAGES = 5;
 const MIN = 60_000;
 const TTL = Object.freeze({ chats: 10 * MIN, chat: 30 * MIN, members: 6 * 60 * MIN, pins: 30 * MIN, message: 30 * MIN, calendar: 24 * 60 * MIN, event: 30 * MIN });
 
@@ -12,7 +15,9 @@ export function usageKey(date = new Date()) {
 }
 
 export function createLark(env, fetchImpl = fetch, store = null) {
-  const count = () => (store ? store.bump(usageKey()).catch(() => {}) : null);
+  // Calls made in this run: Cloudflare's free plan allows 50 outside calls per run.
+  let made = 0;
+  const count = () => { made += 1; return store ? store.bump(usageKey()).catch(() => {}) : null; };
   const domain = env.LARK_DOMAIN || 'https://open.larksuite.com';
   let token = null; // { value, expiresAt } for this invocation
 
@@ -23,6 +28,7 @@ export function createLark(env, fetchImpl = fetch, store = null) {
     await count();
     const res = await fetchImpl(`${domain}/open-apis/auth/v3/tenant_access_token/internal`, {
       method: 'POST',
+      signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ app_id: env.LARK_APP_ID, app_secret: env.LARK_APP_SECRET }),
     });
@@ -38,6 +44,7 @@ export function createLark(env, fetchImpl = fetch, store = null) {
     const qs = query ? `?${new URLSearchParams(query)}` : '';
     const res = await fetchImpl(`${domain}/open-apis${path}${qs}`, {
       method,
+      signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
       headers: { authorization: `Bearer ${await tenantToken()}`, ...(json ? { 'content-type': 'application/json' } : {}) },
       body: json ? JSON.stringify(json) : undefined,
     });
@@ -48,11 +55,21 @@ export function createLark(env, fetchImpl = fetch, store = null) {
   }
 
   const api = {
+    callsMade: () => made,
     botOpenId: async () => (await call('GET', '/bot/v3/info')).bot?.open_id,
     listChats: async () => (await call('GET', '/im/v1/chats', { query: { page_size: '100' } })).items || [],
     chatInfo: (chatId) => call('GET', `/im/v1/chats/${chatId}`),
-    chatMembers: async (chatId) =>
-      (await call('GET', `/im/v1/chats/${chatId}/members`, { query: { member_id_type: 'open_id', page_size: '100' } })).items || [],
+    chatMembers: async (chatId) => {
+      const all = [];
+      let pageToken = '';
+      for (let page = 0; page < MEMBER_PAGES; page += 1) {
+        const data = await call('GET', `/im/v1/chats/${chatId}/members`, { query: { member_id_type: 'open_id', page_size: '100', ...(pageToken ? { page_token: pageToken } : {}) } });
+        all.push(...(data.items || []));
+        if (!data.has_more || !data.page_token) break;
+        pageToken = data.page_token;
+      }
+      return all;
+    },
     addMembers: (chatId, openIds) =>
       call('POST', `/im/v1/chats/${chatId}/members`, { query: { member_id_type: 'open_id' }, json: { id_list: openIds } }),
     pinnedMessageIds: async (chatId) =>

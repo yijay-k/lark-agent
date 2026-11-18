@@ -17,9 +17,11 @@ export async function wikiIndex(lark, store, log) {
     try { return JSON.parse(cached); } catch { /* rebuild */ }
   }
   const index = [];
-  for (const space of await lark.wikiSpaces().catch(() => [])) {
-    const top = await lark.wikiNodes(space.space_id).catch(() => []);
-    const children = await Promise.all(top.filter((n) => n.has_child).map((n) => lark.wikiNodes(space.space_id, n.node_token).catch(() => [])));
+  // Any failed read fails the whole listing, and nothing is cached: a partial list would make
+  // the missing pages look deleted (and drop them from search) for a day.
+  for (const space of await lark.wikiSpaces()) {
+    const top = await lark.wikiNodes(space.space_id);
+    const children = await Promise.all(top.filter((n) => n.has_child).map((n) => lark.wikiNodes(space.space_id, n.node_token)));
     for (const n of [...top, ...children.flat()].slice(0, MAX_NODES)) {
       if (n.obj_type === 'docx') index.push({ space: space.name, title: n.title, token: n.obj_token, node: n.node_token, edited: n.obj_edit_time || '', description: space.description || '' });
     }

@@ -15,9 +15,12 @@ export const wantsToJoin = (text) => JOIN_RE.test(String(text || ''));
 export const chatLink = (chatId) => `https://applink.larksuite.com/client/chat/open?openChatId=${encodeURIComponent(chatId)}`;
 const offerKey = (dmChatId) => `join-offer:${dmChatId}`;
 
+// Groups the owner keeps closed (CLOSED_GROUPS in wrangler.toml): never offered, never joined.
+export const closedGroups = (env = {}) => new Set(String(env.CLOSED_GROUPS || '').split(',').map((s) => s.trim()).filter(Boolean));
+
 // The groups the search hits belong to that this person isn't in (at most two).
-export function offersFrom(hits, memberOf, groupName) {
-  const ids = [...new Set(hits.map((h) => h.chat_id).filter((id) => id && !memberOf.has(id) && groupName.has(id)))];
+export function offersFrom(hits, memberOf, groupName, closed = new Set()) {
+  const ids = [...new Set(hits.map((h) => h.chat_id).filter((id) => id && !memberOf.has(id) && groupName.has(id) && !closed.has(id)))];
   return ids.slice(0, MAX_OFFERS).map((id) => ({ chat_id: id, name: groupName.get(id) }));
 }
 
@@ -66,9 +69,9 @@ export async function groupDetails({ store, group }) {
 }
 
 // Adds one person to one group the bot is in. Returns { ok, name, already, details } or { ok: false, error }.
-export async function joinGroup({ lark, store, userId, chatId, log = () => {} }) {
+export async function joinGroup({ env = {}, lark, store, userId, chatId, log = () => {} }) {
   const group = (await lark.listChats()).find((g) => g.chat_id === chatId);
-  if (!group) return { ok: false, error: "That group doesn't exist anymore, or I'm not in it." };
+  if (!group || closedGroups(env).has(chatId)) return { ok: false, error: "That group doesn't take new members through me. Ask EJ." };
   const members = await (lark.chatMembersFresh || lark.chatMembers)(chatId).catch(() => []);
   const already = members.some((m) => m.member_id === userId);
   if (!already) {
@@ -84,4 +87,19 @@ export async function joinGroup({ lark, store, userId, chatId, log = () => {} })
     log(`joined ${userId.slice(0, 8)}… to ${chatId}`);
   }
   return { ok: true, already, name: group.name, details: await groupDetails({ store, group }) };
+}
+
+// A Join button was tapped (Lark's card.action.trigger callback). Returns the toast Lark shows at
+// once and the DM to send after, or null when the tap isn't a join (or was already handled).
+export async function joinFromTap({ env, lark, store, body, log = () => {} }) {
+  let value = body?.event?.action?.value || {};
+  if (typeof value === 'string') { try { value = JSON.parse(value); } catch { value = {}; } }
+  const userId = body?.event?.operator?.open_id;
+  if (value.action !== 'join' || !value.chat_id || !userId) return null;
+  const tapId = body.header?.event_id || body.event?.token;
+  if (tapId && !(await store.firstTime(`tap:${tapId}`))) return null;
+  const res = await joinGroup({ env, lark, store, userId, chatId: value.chat_id, log });
+  const dm = res.ok ? (res.already ? `You're already in **${res.name}**.\n\n${res.details}` : res.details) : res.error;
+  const toast = res.ok ? (res.already ? `You're already in ${res.name}` : `Added you to ${res.name}`) : "Couldn't add you: see my message";
+  return { userId, dm, toast: { type: res.ok ? 'success' : 'error', content: toast } };
 }

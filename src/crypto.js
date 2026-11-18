@@ -35,7 +35,15 @@ export async function signatureOk(headers, rawBody, encryptKey) {
   const signature = headers.get('x-lark-signature');
   if (!timestamp || !nonce || !signature) return false;
   const expected = await sha256Hex(timestamp + nonce + encryptKey + rawBody);
-  return expected === signature;
+  return sameText(expected, String(signature).toLowerCase());
+}
+
+// Compares in time that doesn't depend on where the texts first differ.
+function sameText(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 // For tests: encrypt the way Lark does.

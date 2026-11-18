@@ -20,8 +20,21 @@ CREATE TABLE IF NOT EXISTS briefings (chat_id TEXT NOT NULL, kind TEXT NOT NULL,
 CREATE TABLE IF NOT EXISTS counters (key TEXT PRIMARY KEY, n INTEGER NOT NULL);
 
 -- What Eleyna can search (SQLite full-text search, BM25 ranking): calendar events, wiki sections,
--- groups, pinned messages and group chat messages. DMs are never indexed. Refilled by the cron.
+-- groups, pinned messages, group chat messages and memory facts. A DM's messages are never indexed;
+-- its memory facts are, and are shown only in that DM. Refilled by the cron.
 CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(
   kind UNINDEXED, ref UNINDEXED, chat_id UNINDEXED, title, body, url UNINDEXED, at UNINDEXED,
   tokenize = 'porter unicode61'
 );
+
+-- Long-term memory (the Mem0 method, see README): many small facts per chat, each with where it
+-- came from. Added, updated and removed by memory.js; also in `search` (kind 'memory') and Vectorize.
+CREATE TABLE IF NOT EXISTS memories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  chat_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  sources TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS memories_by_chat ON memories (chat_id, updated_at);
