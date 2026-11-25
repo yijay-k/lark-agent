@@ -26,6 +26,7 @@ What the bot is and how it works: `README.md`. Her jobs and roadmap: `docs/ROADM
 | Encrypt Key, Verification Token | Lark console → Events & Callbacks → Encryption strategy | `wrangler secret put LARK_ENCRYPT_KEY` / `LARK_VERIFICATION_TOKEN` |
 | D1 database id | `npx wrangler d1 create` output | `database_id` in `wrangler.toml` |
 | Onboarding group's chat id (`oc_…`) | The logs (step 9) | `ONBOARDING_CHAT_ID` in `wrangler.toml` |
+| Team groups' chat ids (optional) | The logs (step 9), like the onboarding group | `TEAM_CHATS` in `wrangler.toml` (comma-separated): who "the team" is in "invite the team". Unset: the `GROUP_WIKIS` groups, else `ONBOARDING_CHAT_ID` |
 | Owner's DM chat id (`oc_…`) | The logs (step 9) | `ALERT_CHAT_ID` in `wrangler.toml` |
 | Timezone | Ask (e.g. `Asia/Kuala_Lumpur`) | `TIMEZONE` in `wrangler.toml` |
 | Bot name, organisation, what she should say about it, the welcome DM | Interview the person (step 2) | See step 2 |
@@ -63,9 +64,11 @@ Show the person the new `WELCOME` before moving on.
   - Receive messages: `im:message.group_at_msg:readonly`, `im:message.p2p_msg:readonly`, and `im:message.group_msg` (read all group messages, so she remembers the chat).
   - Messages: `im:message:readonly`, `im:message:send_as_bot`, `im:message.reactions:write_only`, `im:message.pins:read`.
   - Groups: `im:chat:readonly`, `im:chat.members:read`, and `im:chat.members:write_only` (to add people who accept events).
-  - Calendar: `calendar:calendar:readonly`, `calendar:calendar.event:read`.
+  - Calendar: `calendar:calendar:readonly`, `calendar:calendar.event:read`, and `calendar:calendar.event:update` (the owner's "invite the team to the AiSED events": sends calendar invites).
+  - Event groups: `im:chat:create` (the owner's "make a group for AiSED on 2 Dec") and `im:message.pins:write_only` (pins the event details in it).
   - Knowledge: `wiki:wiki:readonly`, `docx:document:readonly`.
   - People: `contact:contact.base:readonly`.
+- **Calendar events the bot works with**: the bot reads (and invites people to) events it's a guest of, on its own calendar. For each event the owner wants it to send invites for, they invite the bot as a guest and, in the event's guest permissions, turn on **Guests can invite others**. Without that Lark refuses the invite and the bot says so. (Events on a shared calendar work the same way: what matters is that the bot is a guest and guests may invite others.)
 - **Credentials**: copy the **App ID** to the person; they keep the **App Secret** for step 5.
 
 **4. Database and config.**
@@ -137,6 +140,7 @@ Done. Tell the person what works and anything left over.
 | Saves messages but never answers mentions | The mention must pick the bot from the @ list; typing the name doesn't count. Also check the receive-message scopes. |
 | `230013 Bot has NO availability to this user` | Availability in the published version doesn't include that person (step 8). |
 | `41050 no user authority` when looking someone up | Same cause: outside the app's availability. |
+| "I couldn't send the calendar invites" | The bot isn't a guest of the event, or guests can't invite others (step 3, calendar events); or `calendar:calendar.event:update` is missing. |
 | `99991672` or another permission error | A scope from step 3 is missing; add it, then publish a new version. |
 | Answers stop and models return 404 | Google retired a model. List the current ones with `POST /debug/models` (same header) and update `GEMINI_MODELS` in `wrangler.toml`. |
 | Answers cut off or none after ~30 s | Cloudflare's free limit. Keep the fast model first in `GEMINI_MODELS`. |

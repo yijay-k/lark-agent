@@ -12,7 +12,7 @@ const JOIN_RE = /\b(add me|let me in|invite me|put me in)\b/i;
 
 export const isYes = (text) => String(text || '').trim().length <= 40 && YES_RE.test(String(text || '').trim());
 export const wantsToJoin = (text) => JOIN_RE.test(String(text || ''));
-const chatLink = (chatId) => `https://applink.larksuite.com/client/chat/open?openChatId=${encodeURIComponent(chatId)}`;
+export const chatLink = (chatId) => `https://applink.larksuite.com/client/chat/open?openChatId=${encodeURIComponent(chatId)}`;
 const offerKey = (dmChatId) => `join-offer:${dmChatId}`;
 
 // Groups the owner keeps closed (CLOSED_GROUPS in wrangler.toml): never offered, never joined.

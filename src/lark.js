@@ -102,6 +102,20 @@ export function createLark(env, fetchImpl = fetch, store = null) {
       (await call('GET', `/calendar/v4/calendars/${encodeURIComponent(calendarId)}/events/${eventId}/attendees`, {
         query: { user_id_type: 'open_id', page_size: '100' },
       })).items || [],
+    // A new group (scope im:chat:create): `ownerId` becomes its owner, the bot stays an admin. The
+    // same `uuid` within 10 hours never makes a second group.
+    createChat: ({ name, description, ownerId, userIds = [], uuid }) =>
+      call('POST', '/im/v1/chats', {
+        query: { user_id_type: 'open_id', set_bot_manager: 'true', ...(uuid ? { uuid } : {}) },
+        json: { name, description, owner_id: ownerId, user_id_list: userIds, chat_mode: 'group', chat_type: 'private' },
+      }),
+    pinMessage: (messageId) => call('POST', '/im/v1/pins', { json: { message_id: messageId } }),
+    // Guests of an event, who get Accept / Decline in Lark (scope calendar:calendar.event:update).
+    addAttendees: (calendarId, eventId, openIds) =>
+      call('POST', `/calendar/v4/calendars/${encodeURIComponent(calendarId)}/events/${eventId}/attendees`, {
+        query: { user_id_type: 'open_id' },
+        json: { attendees: openIds.map((id) => ({ type: 'user', user_id: id })), need_notification: true },
+      }),
   };
   if (!store) return api;
 

@@ -16,7 +16,8 @@ Eleyna is AI Exploration's **secretary, HR and onboarding guide**: she knows the
 | **Advisor**: "What should AI Exploration do next?" grounded in the wiki and recent chats | next |
 | **Club folder**: one Lark Drive folder shared with Eleyna, so she knows official docs beyond the wiki | next |
 | **Organiser**: weekly DM to Yi Jay: upcoming events, missing RSVPs, unanswered questions, stale docs | later |
-| **HR actions**: add people to groups, send announcements; admin-only, always confirmed first | later |
+| **HR actions**: add people to groups, send announcements; admin-only, always confirmed first | adding people ✅ built; announcements later |
+| **Event set-up** (owner only, confirmed first): "make a group for AiSED on 2 Dec and invite the team" makes the event-day group (owner = Yi Jay) with one pinned details message built from the calendar events (schedule and sessions, venue and address, dress code, parking, forms and registration links, RSVP deadline), and sends calendar invites. "Invite" means both: "invite Cindy and Ken to the AiSED events" (or "to the AiSED group") adds them to the event's group and sends the calendar invites, and pins the details there if they aren't yet. "add everyone who accepted to the AiSED group" adds the guests who accepted. "The team" = members of `TEAM_CHATS` (else the `GROUP_WIKIS` groups) | ✅ built (2026-11-25); not yet tried live. Needs the scopes `im:chat:create`, `im:message.pins:write_only`, `calendar:calendar.event:update`, and Eleyna as a guest of each event with **Guests can invite others** on |
 | **Project progress**: each project gets a tracker (use **Lark Base**, not Google Sheets: Eleyna can read Base directly; the Hub already has *AI Exploration Operations*). Members fill in their row; Eleyna can say "you're at step 2 of Project 001; next, fill in X" | later |
 | **"Ping EJ for me"**: when a member is stuck or wants a tool assignment, Eleyna offers to message EJ for them, shows the message first, and sends it only on "yes" | later |
 
@@ -35,5 +36,7 @@ Eleyna is AI Exploration's **secretary, HR and onboarding guide**: she knows the
 
 ## Lark settings Eleyna depends on
 - **Events & Callbacks** → request URL the Worker URL + `/lark/events` (`https://lark-event-bot.<subdomain>.workers.dev/lark/events`); events: Message received, User added to group, User enters chat with bot. **Callback configuration:** same URL, callback *card.action.trigger* (the Join button; then `JOIN_BUTTON = "on"`).
+- **Scopes for event set-up**: `im:chat:create` (make the group), `im:message.pins:write_only` (pin its details), `calendar:calendar.event:update` (send calendar invites). Publish a new version after adding them.
+- **Calendar invites**: Eleyna can only add guests to an event she organises, or one whose guests may invite others. For each event: invite Eleyna as a guest and turn on **Guests can invite others**. Otherwise she reports Lark's refusal and changes nothing.
 - **Availability**: must include everyone she should talk to. Otherwise Lark refuses with `230013 Bot has NO availability to this user` (a failed welcome is retried later).
 - The Encrypt Key and Verification Token are Cloudflare secrets (`LARK_ENCRYPT_KEY`, `LARK_VERIFICATION_TOKEN`).

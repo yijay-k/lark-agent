@@ -52,7 +52,7 @@ export function nameScore(query, name) {
 }
 
 // Everyone in Eleyna's groups (the club's people), with a name. Member lists are cached for hours.
-async function knownPeople(lark, groups) {
+export async function knownPeople(lark, groups) {
   const people = new Map();
   for (const g of groups) {
     for (const m of await lark.chatMembers(g.chat_id).catch(() => [])) if (m.member_id && m.name) people.set(m.member_id, { id: m.member_id, name: m.name });
@@ -113,6 +113,8 @@ export async function startAdd({ lark, store, chatId, isGroup, text }) {
     return `${named} Say it again with the group, e.g. "add ${req.names[0]} to ${groups[0]?.name || 'the event group'}". My groups: ${groups.map((g) => `**${g.name}**`).join(', ')}.`;
   }
   const { text: reply, pending } = confirmText(found, target);
+  // One plan at a time per chat: an event set-up waiting here (events.js) is dropped.
+  await store.kvSet(`admin:event:${chatId}`, null).catch(() => {});
   await store.kvSet(pendingKey(chatId), pending);
   return reply;
 }
@@ -138,7 +140,8 @@ export async function answerAdd({ lark, store, chatId, text, isYes, log = () => 
   return addPeople({ lark, store, target: pending.target, people, log });
 }
 
-async function addPeople({ lark, store, target, people, log }) {
+// Adds people to one group; says who was added, who was already in it, and whom Lark refused.
+export async function addPeople({ lark, store, target, people, log }) {
   const members = await (lark.chatMembersFresh || lark.chatMembers)(target.chat_id).catch(() => []);
   const already = people.filter((p) => members.some((m) => m.member_id === p.id));
   const toAdd = people.filter((p) => !already.includes(p));
