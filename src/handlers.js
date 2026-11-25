@@ -93,7 +93,7 @@ export async function answerQuestion({ env, lark, store, chatId, question, asker
   const research = isResearch(question);
   const ctx = await groupContext({ env, lark, store, chatId, fetchImpl, log, deep: research, question });
   const ending = await nextEnding(store, chatId);
-  const system = answerSystem(ctx.name, ctx.description, ctx.events.length > 0, today(tz)) + (research ? researchAddon() : '') + endingRule(ending);
+  const system = answerSystem(ctx.name, ctx.description, ctx.events.length > 0, today(tz), ctx.wikis, ctx.spaces) + (research ? researchAddon() : '') + endingRule(ending);
   const answer = await think(env, system, answerPrompt(contextText(ctx), question, asker), log, fetchImpl, { search: research, startedAt });
   log(`answer via ${answer.via}: ${Date.now() - t0} ms total`);
   return answer;
@@ -181,7 +181,7 @@ export async function answerDirect({ env, lark, store, chatId, userId, question,
   const tz = env.TIMEZONE || 'Asia/Kuala_Lumpur';
   const ctx = await personContext({ env, lark, store, chatId, userId, question, log, fetchImpl });
   const clubHit = ctx.found.some(isClubMatch);
-  const system = dmSystem(today(tz)) + foundClubItems(clubHit) + endingRule(await nextEnding(store, chatId));
+  const system = dmSystem(today(tz), ctx.spaces) + foundClubItems(clubHit) + endingRule(await nextEnding(store, chatId));
   const answer = await think(env, system, answerPrompt(contextText(ctx), question, 'them'), log, fetchImpl, { startedAt });
   return { ...answer, offers: ctx.offers, found: ctx.found.length };
 }

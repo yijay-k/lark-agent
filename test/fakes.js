@@ -30,10 +30,10 @@ export function fakeStore() {
       rows.forEach((r) => index.push(row(kind, ref, r)));
     },
     indexAdd: async (kind, ref, r) => { index.push(row(kind, ref, r)); },
-    indexSearch: async (match, limit, { chats = [], kinds = null } = {}) => {
+    indexSearch: async (match, limit, { chats = [], kinds = null, docRefs = null } = {}) => {
       const terms = [...match.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
       const score = (r) => terms.reduce((n, t) => n + (r.title.toLowerCase().includes(t) ? 5 : 0) + (r.body.toLowerCase().includes(t) ? 1 : 0), 0);
-      const visible = (r) => (['event', 'doc', 'group'].includes(r.kind) || chats.includes(r.chat_id)) && (!kinds || kinds.includes(r.kind));
+      const visible = (r) => (['event', 'doc', 'group'].includes(r.kind) || chats.includes(r.chat_id)) && (!kinds || kinds.includes(r.kind)) && (!docRefs || r.kind !== 'doc' || docRefs.includes(r.ref));
       return index.filter((r) => visible(r) && score(r) > 0).sort((a, b) => score(b) - score(a)).slice(0, limit);
     },
     indexList: async (kind) => index.filter((r) => r.kind === kind).sort((a, b) => a.at - b.at),

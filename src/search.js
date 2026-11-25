@@ -6,7 +6,7 @@
 // Filled by the cron every 6 hours with few Lark calls: a wiki page is re-read only when edited.
 
 import { messageText, eventIdsFromDescription, findLinks, keywords, formatTime } from './text.js';
-import { wikiIndex } from './knowledge.js';
+import { wikiIndex, pageText } from './knowledge.js';
 import { vectorsOn, embed, nearest, upsertVectors, deleteVectors, vectorId, vectorMeta, fingerprint } from './embed.js';
 
 const DAY_S = 86400;
@@ -17,6 +17,9 @@ const EVENT_CHARS = 1500;
 // Cloudflare's free plan allows 50 outside calls per run; the rest of the wiki waits for the next run.
 const DOC_READS_PER_RUN = 8;
 const DOC_RECHECK_MS = 7 * DAY_S * 1000;
+// A Base (the PR Tracker) changes all week and its edit time isn't reliable, so it is re-read on a
+// timer: every 12 h costs ~5 calls × 2 a day ≈ 300 calls a month per Base.
+const BASE_RECHECK_MS = 12 * 3600 * 1000;
 const MAX_TERMS = 12;
 // Outside calls this run may use before the index stops for now (Cloudflare free: 50 per run;
 // the rest of the cron needs some). What's skipped is done on the next run.
@@ -142,10 +145,12 @@ async function indexWiki(ctx, { docReads }) {
   for (const p of pages) {
     // v2: pages indexed before meaning search are read once more, to get their embeddings.
     const mark = `index:doc2:${p.token}`;
-    if ((await store.kvGet(mark, DOC_RECHECK_MS)) === String(p.edited)) continue;
+    const isBase = p.type === 'bitable';
+    const seen = await store.kvGet(mark, isBase ? BASE_RECHECK_MS : DOC_RECHECK_MS);
+    if (isBase ? seen !== undefined && seen !== null : seen === String(p.edited)) continue;
     if (read >= docReads || !budgetLeft(lark)) { left += 1; continue; }
     read += 1;
-    const text = await lark.docText(p.token).catch(() => null);
+    const text = await pageText(lark, p).catch((err) => (log(`index ${p.title}: ${err.message}`), null));
     if (text === null) continue;
     await store.savePage(`lark:doc:${p.token}`, text);
     const url = env.LARK_WEB && p.node ? `${env.LARK_WEB}/wiki/${p.node}` : '';
@@ -181,11 +186,11 @@ export async function refreshIndex({ env, lark, store, log = () => {}, now = Dat
 // What one person may see for a question: open items for everyone, a group's own
 // pinned messages, chat and memory only if they're in that group. The database filters before
 // ranking (so hidden rows can't crowd out visible ones); the check here is a second guard.
-export async function searchFor({ store, question, memberOf, kinds = null, limit = 8, log = () => {} }) {
+export async function searchFor({ store, question, memberOf, kinds = null, docRefs = null, limit = 8, log = () => {} }) {
   const match = matchQuery(question);
   if (!match) return [];
-  const rows = await store.indexSearch(match, CANDIDATES, { chats: [...memberOf], kinds }).catch((err) => (log(`search: ${err.message}`), []));
-  return rows.filter((r) => (PUBLIC_KINDS.has(r.kind) || memberOf.has(r.chat_id)) && (!kinds || kinds.includes(r.kind))).slice(0, limit);
+  const rows = await store.indexSearch(match, CANDIDATES, { chats: [...memberOf], kinds, docRefs }).catch((err) => (log(`search: ${err.message}`), []));
+  return rows.filter((r) => (PUBLIC_KINDS.has(r.kind) || memberOf.has(r.chat_id)) && (!kinds || kinds.includes(r.kind)) && (!docRefs || r.kind !== 'doc' || docRefs.includes(r.ref))).slice(0, limit);
 }
 
 // Merges ranked lists (reciprocal rank fusion). An item keeps whether a keyword matched it
@@ -207,10 +212,13 @@ export function fuse(lists, limit) {
 
 // Keyword + meaning search, merged. `allowed`: the chats whose pins, chat and memory this person
 // may see (open kinds are always visible). `kinds`: only these (e.g. ['memory'] for a chat's own memory).
-export async function hybridSearch({ env, store, question, allowed, kinds = null, limit = 8, log = () => {} }) {
+// `docRefs`: wiki rows only from these pages (the wikis this chat may use; null: every page).
+// Keyword search filters them before ranking; meaning search after.
+export async function hybridSearch({ env, store, question, allowed, kinds = null, docRefs = null, limit = 8, log = () => {} }) {
   const wanted = (k) => !kinds || kinds.includes(k);
-  const visible = (r) => wanted(r.kind) && (PUBLIC_KINDS.has(r.kind) || allowed.has(r.chat_id));
-  const keyword = (await searchFor({ store, question, memberOf: allowed, kinds, limit: CANDIDATES, log })).filter(visible);
+  const pageOk = docRefs ? ((set) => (r) => r.kind !== 'doc' || set.has(r.ref))(new Set(docRefs)) : () => true;
+  const visible = (r) => wanted(r.kind) && (PUBLIC_KINDS.has(r.kind) || allowed.has(r.chat_id)) && pageOk(r);
+  const keyword = (await searchFor({ store, question, memberOf: allowed, kinds, docRefs, limit: CANDIDATES, log })).filter(visible);
   let meaning = [];
   let meaningOn = false;
   if (vectorsOn(env) && String(question || '').trim()) {

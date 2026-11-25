@@ -10,6 +10,9 @@ She runs 24/7 on **Cloudflare Workers' free plan** with **Gemini's free tier**, 
 ## What she does
 
 - **Every group gets its own assistant.** Mention `@Eleyna` and she answers from *that group only*: its description, pinned messages, calendar events, the pages they link to and the recent chat. One group never sees another.
+- **Each group gets its own wiki.** `GROUP_WIKIS` in `wrangler.toml` gives a group its wiki space(s): the PR Exploration group sees only the PR Exploration wiki, the AI Exploration team group only the AI Exploration wiki. A group not listed sees no wiki.
+- **DMs are limited by team.** Everyone gets the wikis in `OPEN_WIKIS`; a team's private wiki only reaches people in one of its groups (`GROUP_WIKIS`); the owner sees everything.
+- **She reads team trackers.** A Base in a wiki (the PR Tracker) is read like a page, one line per row, re-read every 12 hours, with the same per-chat limits. So "who's posting Friday?" or "what are my tasks this week?" works.
 - **DMs know the whole club.** She searches one index of every calendar event, the wiki, the groups and their pinned notes, so "anything on Thursday?" or "Qwen conference timeline?" is answered from the source, with the event's own page read for details.
 - **Join from a DM.** Everyone may know every event, but a group's chat is for its members. Ask about a group you're not in and she says it exists, shares the event's details and offers to add you: tap **Join** (or reply *yes*) and she adds you and DMs you its details. `/clear` forgets your DM history and memory.
 - **The owner adds people.** "@Eleyna add kai here" in a group, or "add kai and chelsea to the qwen group" in a DM: names are matched in code to people in her groups (any order, with or without spaces, by first name), she asks you to confirm, or to pick by number when several match, then adds them. Only the owner (`OWNER_OPEN_IDS`) can; she tells anyone else so, and never pretends she can do it herself.
@@ -117,7 +120,7 @@ Nothing can be billed: neither Cloudflare nor Google has a card on file, and fre
 - All keys are Cloudflare secrets (`LARK_APP_SECRET`, `LARK_ENCRYPT_KEY`, `LARK_VERIFICATION_TOKEN`, `GEMINI_API_KEY`, `DEBUG_KEY`), never in the repo.
 - Test routes (`/debug/*`) answer only with the `x-debug-key` header and return 404 otherwise.
 - Eleyna reads only what the bot has been given: the groups she's in, the club wiki and public pages linked in those groups.
-- Who sees what is decided in code, not by the AI: events, the wiki and the list of groups are open to everyone; a group's chat, pinned messages and memory only to its members; a DM's memory only in that DM. Joining is the person's own choice (a button or "yes"), and only to groups the bot is in; groups listed in `CLOSED_GROUPS` are never offered or joined.
+- Who sees what is decided in code, not by the AI: events and the list of groups are open to everyone; a wiki is visible in a DM if it's in `OPEN_WIKIS` or the person is in one of its groups, and a group sees only its own spaces from `GROUP_WIKIS`; a group's chat, pinned messages and memory only to its members; a DM's memory only in that DM. Joining is the person's own choice (a button or "yes"), and only to groups the bot is in; groups listed in `CLOSED_GROUPS` are never offered or joined.
 - Search filters by who may see what *before* ranking, in the database and in Vectorize, so hidden rows can't crowd out visible ones.
 - The webhook signature is compared in constant time; Lark calls and linked web pages have timeouts and size caps, so a slow or huge page can't stall or crash an answer.
 
@@ -128,7 +131,8 @@ Nothing can be billed: neither Cloudflare nor Google has a card on file, and fre
 | `src/index.js` | The webhook, the locked test routes and the cron entry point |
 | `src/handlers.js` | Group messages, DMs and deciding when to answer |
 | `src/context.js` | Builds one chat's context: description, pins, events, linked pages, recent chat |
-| `src/knowledge.js` | Lists the club wiki's pages; the fallback when search finds nothing |
+| `src/base.js` | Reads a Lark Base (a team tracker) as searchable text |
+| `src/knowledge.js` | Lists the wiki pages (with their space); which spaces a group may use (`GROUP_WIKIS`); the fallback when search finds nothing |
 | `src/search.js` | The search index (D1 full-text, BM25): events, wiki, groups, pins, group chat; who may see what |
 | `src/memory.js` | Long-term memory per chat (the Mem0 method): writing, updating and recalling facts |
 | `src/embed.js` | Embeddings (Workers AI) and the Vectorize index |

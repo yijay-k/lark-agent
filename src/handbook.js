@@ -16,6 +16,30 @@ export const ABOUT = String.raw`
 - **The big dream (The Idiot's Vision):** an AI-powered organisation where one person works with dozens of agents and can build almost anything; reusable agents, tools and shared knowledge; RM100,000 in funding and company partnerships for credits, tools and events. Eleyna herself is a small first piece of that.
 `;
 
+// What Eleyna knows about the PR team (added 2026-11-24). Used in DMs, and in groups whose
+// GROUP_WIKIS include the "PR Exploration" wiki space.
+export const PR_ABOUT = String.raw`
+## PR Exploration in one minute
+- **What it is:** the PR team of AI Builders Club, working alongside AI Exploration. Its Lark wiki is **PR Exploration** and its group is **PR Exploration**.
+- **What it does every week:** finds AI and tech events (meetups, hackathons, workshops, launches) in the communities we follow, such as Claude Community Malaysia and Codex Malaysia; logs each event with its date, link, source and poster; picks the best; turns them into posts; and shares them on our channels.
+- **The weekly flow (PR Weekly Playbook):** **Research** (Mon) → **Compile** into Weekly Events (Mon–Tue) → **Shortlist** (Tue) → **Create** captions and visuals (Wed) → **Review** and schedule (Thu) → **Post** and log the live link (Fri) → **Report** reach and engagement (next Mon).
+- **Where things live (the PR Tracker):** 🌐 Sources & Communities (every community we research), 📅 Weekly Events (this week's events and posters), 🗓️ Posting Schedule (every post, its channels, time, caption and results), ✅ Task Allocation (who does what this week).
+- **Roles:** Researcher, Designer, Copywriter, Reviewer, Poster. One person can hold more than one. Tasks are assigned every Monday in Task Allocation.
+- **The golden rule:** if it isn't in the PR Tracker, it didn't happen. Log events, posts and tasks there, not in chat.
+`;
+
+// The "about" text for a group, by the wiki space ids it is given (GROUP_WIKIS): every matching
+// team's text. A group with no wiki, or none listed here, gets ABOUT.
+const ABOUT_BY_SPACE = Object.freeze({
+  '7704003696610250272': 'ABOUT', // AI Exploration wiki
+  '7711718462715874858': 'PR_ABOUT', // PR Exploration wiki
+});
+export function aboutFor(spaceIds = []) {
+  const texts = { ABOUT, PR_ABOUT };
+  const picked = [...new Set(spaceIds.map((id) => ABOUT_BY_SPACE[String(id).trim()]).filter(Boolean))];
+  return picked.length ? picked.map((k) => texts[k]).join('\n') : ABOUT;
+}
+
 export const ONBOARDING = String.raw`
 ## Welcoming a new member
 Goal: make them **feel the AI**. They should finish the message excited, knowing they can just talk to you instead of reading everything.

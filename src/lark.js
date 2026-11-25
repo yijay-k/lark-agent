@@ -7,6 +7,8 @@ const TOKEN_MARGIN_S = 300;
 // A slow Lark call must never use up a message's ~30 s; and member lists are read in pages.
 const CALL_TIMEOUT_MS = 8000;
 const MEMBER_PAGES = 5;
+// A Base table is read in pages of 500 rows, at most 2 (1,000 rows), to bound the calls.
+const BASE_PAGES = 2;
 const MIN = 60_000;
 const TTL = Object.freeze({ chats: 10 * MIN, chat: 30 * MIN, members: 6 * 60 * MIN, pins: 30 * MIN, message: 30 * MIN, calendar: 24 * 60 * MIN, event: 30 * MIN });
 
@@ -82,6 +84,19 @@ export function createLark(env, fetchImpl = fetch, store = null) {
     wikiSpaces: async () => (await call('GET', '/wiki/v2/spaces', { query: { page_size: '50' } })).items || [],
     wikiNodes: async (spaceId, parentToken) =>
       (await call('GET', `/wiki/v2/spaces/${spaceId}/nodes`, { query: { page_size: '50', ...(parentToken ? { parent_node_token: parentToken } : {}) } })).items || [],
+    // A Base's tables and records (read only; the PR Tracker). Needs the bitable:app:readonly scope.
+    baseTables: async (appToken) => (await call('GET', `/bitable/v1/apps/${appToken}/tables`, { query: { page_size: '50' } })).items || [],
+    baseRecords: async (appToken, tableId, maxPages = BASE_PAGES) => {
+      const all = [];
+      let pageToken = '';
+      for (let page = 0; page < maxPages; page += 1) {
+        const data = await call('GET', `/bitable/v1/apps/${appToken}/tables/${tableId}/records`, { query: { page_size: '500', ...(pageToken ? { page_token: pageToken } : {}) } });
+        all.push(...(data.items || []));
+        if (!data.has_more || !data.page_token) break;
+        pageToken = data.page_token;
+      }
+      return all;
+    },
     docText: async (documentId) => (await call('GET', `/docx/v1/documents/${documentId}/raw_content`)).content || '',
     sendPostToUser: (openId, title, markdown) =>
       call('POST', '/im/v1/messages', { query: { receive_id_type: 'open_id' }, json: { receive_id: openId, msg_type: 'post', content: postContent(title, markdown) } }),

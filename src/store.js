@@ -116,11 +116,15 @@ export function createStore(db) {
       return gone;
     },
     // Only rows this person may see are ranked: open kinds, or rows of the chats in `chats`.
-    async indexSearch(match, limit = 20, { chats = [], kinds = null } = {}) {
+    // `docRefs`: wiki rows only from these pages (the wikis this chat may use), filtered before
+    // ranking; other kinds are unaffected.
+    async indexSearch(match, limit = 20, { chats = [], kinds = null, docRefs = null } = {}) {
       const open = `kind IN ('event', 'doc', 'group')`;
       const mine = chats.length ? ` OR chat_id IN (${chats.map(() => '?').join(',')})` : '';
       const only = kinds ? ` AND kind IN (${kinds.map(() => '?').join(',')})` : '';
-      const { results } = await db.prepare(`SELECT ${SEARCH_COLS} FROM search WHERE search MATCH ? AND (${open}${mine})${only} ORDER BY ${SEARCH_RANK} LIMIT ?`).bind(match, ...chats, ...(kinds || []), limit).all();
+      // One JSON parameter, not one per page: D1 allows at most 100 bound parameters a query.
+      const these = docRefs ? ` AND (kind != 'doc' OR ref IN (SELECT value FROM json_each(?)))` : '';
+      const { results } = await db.prepare(`SELECT ${SEARCH_COLS} FROM search WHERE search MATCH ? AND (${open}${mine})${only}${these} ORDER BY ${SEARCH_RANK} LIMIT ?`).bind(match, ...chats, ...(kinds || []), ...(docRefs ? [JSON.stringify(docRefs)] : []), limit).all();
       return results || [];
     },
     async indexList(kind) {

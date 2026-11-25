@@ -43,6 +43,14 @@ JOIN_BUTTON = "off"
 # Groups Eleyna never offers or adds people to (comma-separated chat ids). Empty: every group the
 # bot is in is open to anyone in the workspace who asks.
 CLOSED_GROUPS = ""
+# Which wiki space(s) each group may use: "chat_id=space_id", comma-separated; "|" for several
+# spaces. A group not listed gets no wiki. DMs: see OPEN_WIKIS.
+# PR Exploration group -> PR Exploration wiki; AI Exploration — Team -> AI Exploration wiki.
+GROUP_WIKIS = "oc_1fc97d908a02f73e9271a35eacac9090=7711718462715874858,oc_2d92c512c406d338c1e2d4a8c5965604=7704003696610250272"
+# Wiki spaces anyone may use in a DM (comma-separated ids). Other spaces are only for people in one
+# of their groups above (the owner sees all). AI Exploration's wiki is public in the organisation;
+# PR Exploration's is private, so only PR Exploration group members get it in DMs.
+OPEN_WIKIS = "7704003696610250272"
 # New people added to this group get Eleyna's welcome DM (AI Exploration — Team).
 ONBOARDING_CHAT_ID = "oc_2d92c512c406d338c1e2d4a8c5965604"
 # Where usage warnings (75%, 90% of Lark's monthly quota) go: Yi Jay's DM with the bot.

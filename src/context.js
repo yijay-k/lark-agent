@@ -1,8 +1,10 @@
 // Everything the bot knows about one group: its pinned card, its calendar events,
-// the official pages linked from them, and the chat so far. Each group sees only its own.
+// the official pages linked from them, its own wiki (GROUP_WIKIS) and the chat so far.
+// Each group sees only its own.
 
 import { messageText, findLinks, eventIdsFromDescription, htmlToText, usefulSameSiteLinks, relevantLines, formatTime } from './text.js';
-import { knowledgeFor } from './knowledge.js';
+import { knowledgeFor, wikiIndex, groupWikis, dmWikis, pagesIn, rankPages } from './knowledge.js';
+import { isOwner } from './admin.js';
 import { hybridSearch } from './search.js';
 import { chatMemory, recallFacts, recentWindow } from './memory.js';
 import { offersFrom, closedGroups } from './join.js';
@@ -105,8 +107,11 @@ export async function personContext({ env = {}, lark, store, chatId, userId, que
   const turns = recentWindow(recent, memory.cursor, { max: DM_TURNS }).map((m) => ({ ...m, sender_name: m.sender_id === 'bot' ? 'Eleyna (you)' : 'Them' }));
   // A follow-up ("is there a map?") is searched together with the question before it.
   const earlier = recent.filter((m) => m.sender_id !== 'bot' && m.text !== question && now - Number(m.created_at || 0) < FOLLOW_UP_MS).slice(-1)[0]?.text || '';
+  // Wikis: open ones, plus those of their teams' groups. A failed wiki read shows no wiki pages.
+  const spaces = dmWikis(env, memberOf, isOwner(env, userId));
+  const docRefs = spaces ? await wikiIndex(lark, store, log).then((idx) => pagesIn(idx, spaces).map((p) => p.token)).catch((err) => (log(`dm wiki: ${err.message}`), [])) : null;
   // Their own DM memory, and the memory, pins and chat of their groups, are theirs to search.
-  const hits = await hybridSearch({ env, store, question: `${question}\n${earlier}`, allowed: new Set([...memberOf, chatId]), log });
+  const hits = await hybridSearch({ env, store, question: `${question}\n${earlier}`, allowed: new Set([...memberOf, chatId]), docRefs, log });
   const upcoming = (await store.indexList('event').catch(() => [])).filter((e) => Number(e.at) >= now / 1000 - 86400).slice(0, UPCOMING);
   // Pages: links in the message, then the top event's own page (e.g. its registration page).
   const eventLink = hits.find((h) => h.kind === 'event' && h.url)?.url;
@@ -114,10 +119,10 @@ export async function personContext({ env = {}, lark, store, chatId, userId, que
   const pageTexts = await Promise.all(toRead.map((url) => fetchPage(url, store, fetchImpl, log)));
   const pages = toRead.map((url, i) => ({ url, text: relevantLines(pageTexts[i], `${question} ${earlier}`, PEEK_CHARS) || pageTexts[i].slice(0, PEEK_CHARS) })).filter((p) => p.text);
   // Nothing found: fall back to the best-matching wiki pages by title (as before the index).
-  const docs = hits.length ? [] : await knowledgeFor({ lark, store, question, log }).catch((err) => (log(`wiki: ${err.message}`), []));
+  const docs = hits.length ? [] : await knowledgeFor({ lark, store, question, spaces, log }).catch((err) => (log(`wiki: ${err.message}`), []));
   const where = (id) => (!id ? '' : memberOf.has(id) ? `group: ${groupName.get(id)} (they're in it)` : `group: ${groupName.get(id) || 'a group'} (they're NOT in it)`);
   return {
-    name: 'a private chat', pins: [], events: [], pages, docs, chat: turns, memory: { card: memory.card, facts: [] },
+    name: 'a private chat', spaces, pins: [], events: [], pages, docs, chat: turns, memory: { card: memory.card, facts: [] },
     found: hits.map((h) => ({ ...h, where: where(h.chat_id), groupName: h.chat_id === chatId ? 'this chat' : groupName.get(h.chat_id) || '' })),
     upcoming: upcoming.map((e) => `- ${e.title} · ${String(e.body || '').split('\n')[0]}${e.chat_id ? ` · ${where(e.chat_id)}` : ' · no group'}`),
     offers: offersFrom(hits, memberOf, groupName, closedGroups(env)),
@@ -131,6 +136,26 @@ function foundText(h) {
   if (h.kind === 'pin') return `[Pinned in ${h.groupName}]\n${h.body}`;
   if (h.kind === 'memory') return `[Remembered from ${h.groupName}] ${h.body}`;
   return `[Said in ${h.groupName}] ${h.body}`;
+}
+
+// A group's own wiki: the best sections from its spaces in GROUP_WIKIS, never another space's.
+// Search (limited to its pages before ranking) first; if that finds nothing, the pages of those
+// spaces whose title shares a word with the question. Small talk reads nothing.
+const GROUP_DOCS = 4;
+const TITLE_MATCH = 3; // rankPages: 3 points per title word in the question
+
+async function groupWiki({ env, lark, store, chatId, question, log }) {
+  const spaces = groupWikis(env, chatId);
+  // No wiki, or no question (the cron's briefings): nothing to read, and no Lark calls spent.
+  if (!spaces.length || !String(question || '').trim()) return { spaces, wikis: [], docs: [] };
+  const pages = pagesIn(await wikiIndex(lark, store, log), spaces);
+  const wikis = [...new Set(pages.map((p) => String(p.space || '').trim()).filter(Boolean))];
+  const refs = pages.map((p) => p.token);
+  if (!refs.length) return { spaces, wikis, docs: [] };
+  const hits = await hybridSearch({ env, store, question, allowed: new Set(), kinds: ['doc'], docRefs: refs, limit: GROUP_DOCS, log });
+  if (hits.length) return { spaces, wikis, docs: hits.map((h) => ({ title: h.title, text: h.url ? `${h.url}\n${h.body}` : h.body })) };
+  const titleMatch = rankPages(pages, question)[0]?.score >= TITLE_MATCH;
+  return { spaces, wikis, docs: titleMatch ? await knowledgeFor({ lark, store, question, spaces, log }) : [] };
 }
 
 export async function groupContext({ env, lark, store, chatId, fetchImpl = fetch, log = () => {}, deep = false, question = '' }) {
@@ -176,7 +201,9 @@ export async function groupContext({ env, lark, store, chatId, fetchImpl = fetch
   const facts = await recallFacts({ env, store, chatId, question, log }).catch((err) => (log(`recall: ${err.message}`), []));
   const chat = recentWindow(chatSoFar, memory.cursor, { max: CHAT_MESSAGES }).map((m) => ({ ...m, text: String(m.text || '').slice(0, CHAT_LINE_CHARS), sender_name: m.sender_name || names.get(m.sender_id) || 'someone' }));
   lap('chat');
-  return { name: info.name || 'this group', description: info.description || '', pins, events, pages, chat, memory: { card: memory.card, facts } };
+  const { spaces, wikis, docs } = await groupWiki({ env, lark, store, chatId, question, log }).catch((err) => (log(`group wiki: ${err.message}`), { spaces: groupWikis(env, chatId), wikis: [], docs: [] }));
+  lap('wiki');
+  return { name: info.name || 'this group', description: info.description || '', pins, events, pages, docs, spaces, wikis, chat, memory: { card: memory.card, facts } };
 }
 
 export function contextText(ctx) {

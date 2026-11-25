@@ -64,7 +64,7 @@ Show the person the new `WELCOME` before moving on.
   - Messages: `im:message:readonly`, `im:message:send_as_bot`, `im:message.reactions:write_only`, `im:message.pins:read`.
   - Groups: `im:chat:readonly`, `im:chat.members:read`, and `im:chat.members:write_only` (to add people who accept events).
   - Calendar: `calendar:calendar:readonly`, `calendar:calendar.event:read`.
-  - Knowledge: `wiki:wiki:readonly`, `docx:document:readonly`.
+  - Knowledge: `wiki:wiki:readonly`, `docx:document:readonly`, and `bitable:app:readonly` (to read Bases in the wiki, like a team tracker).
   - People: `contact:contact.base:readonly`.
 - **Credentials**: copy the **App ID** to the person; they keep the **App Secret** for step 5.
 

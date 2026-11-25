@@ -10,6 +10,8 @@ Eleyna is AI Exploration's **secretary, HR and onboarding guide**: she knows the
 | **Events**: event groups, pinned cards, reminders, auto-join on Accept | ✅ live |
 | **Group assistant**: every group, its own context only; summaries, shared links, announcements; cocky refusals for anything off-topic | ✅ live |
 | **Knowledge**: the club wiki in DMs, plus the Handbook's "AI Exploration in one minute" | ✅ live |
+| **Teams**: one Eleyna for AI Exploration and the PR team; each group uses only its own wiki (`GROUP_WIKIS`); in DMs, open wikis for everyone and a team's wiki only for its members (`OPEN_WIKIS`) | ✅ built (2026-11-24) |
+| **Team trackers**: she reads the PR Tracker Base (events, sources, posting schedule, tasks), refreshed every 12 h | ✅ built (2026-11-24); needs the `bitable:app:readonly` scope |
 | **Memory**: each chat keeps small facts (the Mem0 method), updated every 15 messages; `/memory` shows them | ✅ live |
 | **Search & join**: DMs search every event, wiki section, group and (for members) its chat; she offers groups you're not in and adds you on Join / "yes" | ✅ live (Join button after the callback is set) |
 | **Onboarding**: anyone added to *AI Exploration — Team* gets a clean welcome DM (start-here reading list: Introduction & Our Mission, Core Philosophy, Hub, Project 001; good-to-know: calendar invites, @Eleyna, say hi to EJ; example questions) and can keep asking her | ✅ built; Eleyna speaks first (added to the team group, opens her DM, or first DM). Needs the Lark events "User added to group" and "User enters chat with bot", and the app's availability set to all members |
@@ -28,7 +30,7 @@ Eleyna is AI Exploration's **secretary, HR and onboarding guide**: she knows the
 
 ## Who controls her
 - **Her rules and tone, and what she tells new members:** `src/handbook.js` in the repo. **Only Yi Jay edits it** (it controls what Eleyna says to everyone).
-- **What she knows:** the AI Exploration wiki; edit a page and she knows it within a day.
+- **What she knows:** the AI Exploration and PR Exploration wikis (in groups, only the group's own); edit a page and she knows it within a day.
 - **Code:** the repo; deploy with `npx wrangler deploy`.
 
 > **Side note (later):** when the club has more members, move the Handbook into a locked Lark doc and assign one trusted "Eleyna manager" who knows how to prompt. Until then, Yi Jay controls all access; no knowledge-base editors yet.
